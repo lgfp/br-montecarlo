@@ -24,6 +24,6 @@ npm run serve      # preview dist/ locally
 - `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts`), models (`forecast.ts`, `senate-forecast.ts`), build
 - `site/` – page templates, styles, scripts (`common.js` shared; one script per page), portraits
 - Senate portraits are optional: drop `site/img/senado/<candidate-slug>.webp` (or `.png`/`.jpg`), e.g. `caroline-de-toni.webp`;
-  without a file the page shows initials.
+  a candidate above 1% without a portrait is listed as text ("Outros candidatos com chance acima de 1%") before the combinations.
 - Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt every 3 hours).
   In the repo settings, set **Pages → Source** to **GitHub Actions**.

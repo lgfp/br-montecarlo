@@ -219,20 +219,6 @@ h2 {
   gap: 8px;
   margin-top: 28px;
 }
-.avatar-wrap { max-width: 360px; }
-.avatar {
-  display: grid;
-  place-items: center;
-  width: min(100%, 220px);
-  aspect-ratio: 1;
-  margin: 0 auto;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  font: 700 clamp(3rem, 12vw, 4.5rem)/1 var(--serif);
-  letter-spacing: 0.02em;
-  color: var(--ink);
-}
-
 .pairs {
   max-width: 68ch;
   margin: 36px auto 0;

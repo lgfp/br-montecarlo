@@ -13,6 +13,8 @@
       title: 'Quem fica com as duas vagas?',
       lede: (h) => `Cada eleitor vota em dois candidatos e os dois mais votados são eleitos: não há segundo turno. Chance de cada candidato ficar entre os dois primeiros, a partir das pesquisas registradas no TSE, com ${h.int(ODDS.simulations)} simulações.`,
       seat: 'Chance de conquistar uma vaga',
+      othersTitle: 'Outros candidatos com chance acima de 1%',
+      othersHint: 'Chance de conquistar uma vaga',
       pairsTitle: 'Combinações mais prováveis',
       pairsHint: 'Quem ocupa as duas vagas',
       methodTitle: 'Como funciona',
@@ -28,6 +30,8 @@
       title: 'Who takes the two seats?',
       lede: (h) => `Each voter picks two candidates and the two with the most votes win: there is no runoff. Chance of each candidate finishing in the top two, from polls registered with the TSE, using ${h.int(ODDS.simulations)} simulations.`,
       seat: 'Chance of winning a seat',
+      othersTitle: 'Other candidates above 1%',
+      othersHint: 'Chance of winning a seat',
       pairsTitle: 'Most likely combinations',
       pairsHint: 'Who fills the two seats',
       methodTitle: 'How it works',
@@ -45,25 +49,34 @@
     if (text !== undefined) node.textContent = text;
     return node;
   };
-  const initials = (name) => name.split(/\s+/).filter((w) => /^\p{Lu}/u.test(w)).slice(0, 2).map((w) => w[0]).join('');
+
+  // a meter row used by both text lists
+  const row = (label, p, h, className = 'meter accent') => {
+    const li = el('li');
+    li.append(el('span', 'names', label), el('span', 'odds', h.pct(p)));
+    const meter = el('div', className);
+    const fill = el('span');
+    fill.style.setProperty('--p', p);
+    meter.append(fill);
+    li.append(meter);
+    return li;
+  };
 
   Site.start(STRINGS, (lang, t, h) => {
-    const candidates = ODDS.candidates.filter((c) => c.p >= MIN);
+    const likely = ODDS.candidates.filter((c) => c.p >= MIN);
+    // portrait cards for candidates that have a portrait; everyone else above 1% is listed as text
+    const withPortrait = likely.filter((c) => c.image);
+    const textOnly = likely.filter((c) => !c.image);
+
     const grid = document.getElementById('candidates');
-    grid.replaceChildren(...candidates.map((c) => {
+    grid.replaceChildren(...withPortrait.map((c) => {
       const card = el('article', 'candidate');
-      const fig = el('figure', c.image ? '' : 'avatar-wrap');
-      if (c.image) {
-        const img = el('img');
-        img.src = ROOT + c.image;
-        img.alt = t.portrait(c.name);
-        img.loading = 'lazy';
-        fig.append(img);
-      } else {
-        const a = el('div', 'avatar', initials(c.name));
-        a.setAttribute('aria-hidden', 'true');
-        fig.append(a);
-      }
+      const fig = el('figure');
+      const img = el('img');
+      img.src = ROOT + c.image;
+      img.alt = t.portrait(c.name);
+      img.loading = 'lazy';
+      fig.append(img);
       const meter = el('div', 'meter');
       const fill = el('span');
       fill.style.setProperty('--p', c.p);
@@ -71,18 +84,11 @@
       card.append(fig, el('h2', '', c.name), el('p', 'party', c.party), el('p', 'label', t.seat), el('p', 'big', h.pct(c.p)), meter);
       return card;
     }));
-    grid.dataset.count = String(candidates.length);
+    grid.dataset.count = String(withPortrait.length);
 
-    const pairs = document.getElementById('pairs');
-    pairs.replaceChildren(...ODDS.pairs.filter((x) => x.p >= MIN).map((x) => {
-      const li = el('li');
-      li.append(el('span', 'names', `${x.a} + ${x.b}`), el('span', 'odds', h.pct(x.p)));
-      const meter = el('div', 'meter accent');
-      const fill = el('span');
-      fill.style.setProperty('--p', x.p);
-      meter.append(fill);
-      li.append(meter);
-      return li;
-    }));
+    document.getElementById('others-section').hidden = textOnly.length === 0;
+    document.getElementById('others').replaceChildren(...textOnly.map((c) => row(c.party ? `${c.name} (${c.party})` : c.name, c.p, h)));
+
+    document.getElementById('pairs').replaceChildren(...ODDS.pairs.filter((x) => x.p >= MIN).map((x) => row(`${x.a} + ${x.b}`, x.p, h)));
   });
 })();
