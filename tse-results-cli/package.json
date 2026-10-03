@@ -1,0 +1,25 @@
+{
+  "name": "tse-results-cli",
+  "version": "1.0.0",
+  "description": "Lists 2026 presidential polls registered with the TSE (dadosabertos.tse.jus.br)",
+  "type": "module",
+  "bin": {
+    "polls": "dist/index.js"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "unzipper": "^0.12.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/unzipper": "^0.10.11",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
