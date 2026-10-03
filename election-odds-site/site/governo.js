@@ -18,6 +18,7 @@
       firstRoundHint: 'Mais de 50% dos votos válidos',
       runoff: 'Segundo turno entre os dois',
       runoffHint: `${A.name} × ${B.name}`,
+      runoffNeeded: 'Chance de haver segundo turno',
       othersTitle: 'Outros segundos turnos possíveis',
       othersHint: 'Chance de cada confronto',
       methodTitle: 'Como funciona',
@@ -37,6 +38,7 @@
       firstRoundHint: 'More than 50% of valid votes',
       runoff: 'Runoff between the two',
       runoffHint: `${A.name} × ${B.name}`,
+      runoffNeeded: 'Chance of a runoff',
       othersTitle: 'Other possible runoffs',
       othersHint: 'Chance of each matchup',
       methodTitle: 'How it works',
@@ -63,6 +65,14 @@
     return m;
   };
 
+  const runoffBox = (t, h) => {
+    const runoff = el('article', 'runoff');
+    const vs = el('p', 'vs', '×');
+    vs.setAttribute('aria-hidden', 'true');
+    runoff.append(vs, el('p', 'label', t.runoff), el('p', 'big accent', h.pct(ODDS.runoffLeaders)), meter(ODDS.runoffLeaders, 'meter accent'), el('p', 'hint', t.runoffHint));
+    return runoff;
+  };
+
   Site.start(STRINGS, (lang, t, h) => {
     // the note about a candidacy (e.g. under appeal) exists for some states only
     const note = document.querySelector('[data-i18n="candidacy"]');
@@ -75,18 +85,23 @@
         const img = el('img');
         img.src = ROOT + l.image;
         img.alt = t.portrait(l.name);
-        img.loading = 'lazy';
         fig.append(img);
         a.append(fig);
       }
       a.append(el('h2', '', l.name), el('p', 'party', l.party), el('p', 'label', t.firstRound), el('p', 'big', h.pct(l.p)), meter(l.p), el('p', 'hint', t.firstRoundHint));
       return a;
     };
-    const runoff = el('article', 'runoff');
-    const vs = el('p', 'vs', '×');
-    vs.setAttribute('aria-hidden', 'true');
-    runoff.append(vs, el('p', 'label', t.runoff), el('p', 'big accent', h.pct(ODDS.runoffLeaders)), meter(ODDS.runoffLeaders, 'meter accent'), el('p', 'hint', t.runoffHint));
-    document.getElementById('stage').replaceChildren(card(A), runoff, card(B));
+    // when the second candidate and the runoff are both under 1%, the leader is shown alone
+    const stage = document.getElementById('stage');
+    if (B.p < MIN && ODDS.runoffLeaders < MIN) {
+      const only = card(A);
+      only.append(el('p', 'hint', `${t.runoffNeeded}: ${h.pct(ODDS.runoffNeeded)}`));
+      stage.replaceChildren(only);
+      stage.dataset.count = '1';
+    } else {
+      stage.dataset.count = '3';
+      stage.replaceChildren(card(A), runoffBox(t, h), card(B));
+    }
 
     // any other runoff above 1% is listed as text (hidden when there is none)
     const others = ODDS.otherRunoffs.filter((x) => x.p >= MIN);

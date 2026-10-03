@@ -38,6 +38,7 @@ and labels are in `TABS` in `src/build.ts` and `NAV` in `site/common.js`.
 Optional, one file per candidate named after them: `site/img/<page>/<candidate-slug>.webp` (or `.png`/`.jpg`), e.g.
 `site/img/senado-sc/caroline-de-toni.webp`, `site/img/governo-rj/eduardo-paes.webp`. Transparent 782×926 works best.
 Without a file, a governor's card is shown without a portrait, and a Senate candidate is listed as text.
+A governor page shows the leader alone (with the chance of a runoff) when the second candidate and the runoff are both under 1%, as on `/governo-sc/`.
 
 ## Run
 

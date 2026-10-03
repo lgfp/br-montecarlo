@@ -81,7 +81,6 @@
       const img = el('img');
       img.src = ROOT + c.image;
       img.alt = t.portrait(c.name);
-      img.loading = 'lazy';
       fig.append(img);
       card.append(fig, el('h2', '', c.name), el('p', 'party', c.party), el('p', 'label', t.seat), el('p', 'big', h.pct(c.p)), meter(c.p));
       return card;

@@ -157,6 +157,9 @@ h2 {
   color: var(--muted);
 }
 
+/* a leader shown alone (second candidate and runoff under 1%) */
+.stage[data-count="1"] { grid-template-columns: minmax(0, 360px); justify-content: center; }
+
 /* ---- method ---- */
 .method {
   max-width: 68ch;
