@@ -2,8 +2,9 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { computeOdds } from './odds.ts';
 import { computeSenateOdds } from './senate-odds.ts';
+import { computeGovernorOdds } from './governor-odds.ts';
 
-const [{ odds }, { odds: senate }] = await Promise.all([computeOdds(), computeSenateOdds()]);
+const [{ odds }, { odds: senate }, governor] = await Promise.all([computeOdds(), computeSenateOdds(), computeGovernorOdds()]);
 
 const pct = (p: number) => (p < 0.01 ? '<1%' : `${(p * 100).toFixed(p < 0.1 ? 1 : 0).replace('.', ',')}%`);
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c'); // keeps the JSON inert inside <script>
@@ -11,8 +12,9 @@ const slug = (name: string) => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist/senado-sc', { recursive: true });
+await mkdir('dist/governo-rj', { recursive: true });
 await cp('site/img', 'dist/img', { recursive: true });
-for (const f of ['style.css', 'common.js', 'presidente.js', 'senado-sc.js']) await cp(`site/${f}`, `dist/${f}`);
+for (const f of ['style.css', 'common.js', 'presidente.js', 'senado-sc.js', 'governo-rj.js']) await cp(`site/${f}`, `dist/${f}`);
 await writeFile('dist/.nojekyll', '');
 
 // --- president ---
@@ -38,5 +40,14 @@ const senatePage = (await readFile('site/senado-sc.template.html', 'utf8'))
   .replace('__NOSCRIPT__', 'Chance de conquistar uma vaga: ' + senate.candidates.filter((c) => c.p >= 0.01).map((c) => `${c.name} ${pct(c.p)}`).join(' · '));
 await writeFile('dist/senado-sc/index.html', senatePage);
 
+// --- Rio de Janeiro governor ---
+await writeFile('dist/governo-rj/data.json', JSON.stringify(governor, null, 2) + '\n');
+const governorPage = (await readFile('site/governo-rj.template.html', 'utf8'))
+  .replaceAll('__ROOT__', '../')
+  .replace('__ODDS_JSON__', json(governor))
+  .replace('__NOSCRIPT__', `Eduardo Paes vence no 1º turno: ${pct(governor.firstRoundWin.paes)} · Segundo turno entre os dois: ${pct(governor.runoffPaesRuas)} · Douglas Ruas vence no 1º turno: ${pct(governor.firstRoundWin.ruas)}`);
+await writeFile('dist/governo-rj/index.html', governorPage);
+
 console.log('President:', JSON.stringify(odds.firstRoundWin), 'runoff', pct(odds.runoffLulaFlavio));
 console.log('SC Senate:', senate.candidates.filter((c) => c.p >= 0.01).map((c) => `${c.name} ${pct(c.p)}`).join(', '));
+console.log('RJ governor:', `Paes ${pct(governor.firstRoundWin.paes)}, Ruas ${pct(governor.firstRoundWin.ruas)}, runoff Paes x Ruas ${pct(governor.runoffPaesRuas)}, other runoffs >=1%: ${governor.otherRunoffs.filter((x) => x.p >= 0.01).length}`);

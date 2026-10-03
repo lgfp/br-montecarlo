@@ -2,8 +2,8 @@
 (() => {
   const DEFAULT_LANG = 'pt-BR';
   const NAV = {
-    'pt-BR': { president: 'Presidente', senate: 'Senado · SC', pages: 'Páginas' },
-    en: { president: 'President', senate: 'Senate · SC', pages: 'Pages' },
+    'pt-BR': { president: 'Presidente', senate: 'Senado · SC', governor: 'Governo · RJ', pages: 'Páginas' },
+    en: { president: 'President', senate: 'Senate · SC', governor: 'Governor · RJ', pages: 'Pages' },
   };
 
   const readLang = (strings) => {

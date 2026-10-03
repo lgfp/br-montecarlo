@@ -2,9 +2,10 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import { toGrid } from './wikipedia.ts';
 
-const API = 'https://pt.wikipedia.org/w/api.php?action=parse&page=Pesquisas_eleitorais_para_a_elei%C3%A7%C3%A3o_estadual_de_2026_em_Santa_Catarina&prop=text&format=json&formatversion=2';
+const api = (page: string) => `https://pt.wikipedia.org/w/api.php?action=parse&page=${page}&prop=text&format=json&formatversion=2&redirects=1`;
 const MONTHS: Record<string, number> = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
 
+/** one row of a pt.wikipedia state poll table (Senate, or governor first round) */
 export interface SenatePoll {
   pollster: string;
   period: string;
@@ -56,7 +57,7 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, year
   return grid.slice(headerRows).flatMap((row): SenatePoll[] => {
     const period = text(row[idx.period].text);
     const end = parseEndDate(period, year);
-    if (!end) return [];
+    if (!end || num(row[idx.sample].text) === null) return [];
     return [{
       pollster: text(row[idx.pollster].text),
       period,
@@ -71,12 +72,18 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, year
   });
 }
 
-/** Senate polls of the campaign period ("Agosto - Outubro" table) for Santa Catarina */
-export async function fetchSantaCatarinaSenatePolls(): Promise<SenatePoll[]> {
-  const res = await fetch(API, { headers: { 'User-Agent': 'br-montecarlo/1.0 (https://github.com/lgfp/br-montecarlo)' } });
+type Race = 'senate' | 'governor';
+
+/**
+ * Campaign-period ("Agosto - Outubro") first-round governor table, or Senate table, of a state page such as
+ * "Pesquisas eleitorais para a eleição estadual de 2026 em Santa Catarina" (already URL-encoded in `page`).
+ */
+export async function fetchStatePolls(page: string, race: Race): Promise<SenatePoll[]> {
+  const res = await fetch(api(page), { headers: { 'User-Agent': 'br-montecarlo/1.0 (https://github.com/lgfp/br-montecarlo)' } });
   if (!res.ok) throw new Error(`Wikipedia (pt) fetch failed: HTTP ${res.status}`);
   const { parse } = (await res.json()) as { parse: { text: string } };
   const $ = cheerio.load(parse.text);
+  const wantH2 = race === 'senate' ? /^Senador$/i : /^Primeiro Turno \(Governador\)/i;
 
   const polls: SenatePoll[] = [];
   let h2 = '', h4 = '';
@@ -86,10 +93,13 @@ export async function fetchSantaCatarinaSenatePolls(): Promise<SenatePoll[]> {
       const t = e.find('h2,h3,h4').first();
       if (t.prop('tagName') === 'H2') { h2 = text(t.text()); h4 = ''; }
       if (t.prop('tagName') === 'H4') h4 = text(t.text());
-    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && h2 === 'Senador' && /^Agosto/i.test(h4)) {
+    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && wantH2.test(h2) && /^Agosto/i.test(h4)) {
       polls.push(...parseTable($, e as cheerio.Cheerio<Element>, 2026));
     }
   });
-  if (!polls.length) throw new Error('No Senate polls parsed from the pt.wikipedia Santa Catarina page (page layout changed?)');
+  if (!polls.length) throw new Error(`No ${race} polls parsed from pt.wikipedia page ${page} (page layout changed?)`);
   return polls;
 }
+
+export const fetchSantaCatarinaSenatePolls = () =>
+  fetchStatePolls('Pesquisas_eleitorais_para_a_elei%C3%A7%C3%A3o_estadual_de_2026_em_Santa_Catarina', 'senate');

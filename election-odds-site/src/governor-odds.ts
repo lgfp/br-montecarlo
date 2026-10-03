@@ -1,0 +1,97 @@
+import { fetchPolls } from './tse.ts';
+import { matchesPoll, type WikiPoll } from './wikipedia.ts';
+import { fetchStatePolls } from './senate-wikipedia.ts';
+import { ELECTION_DATE, forecast } from './forecast.ts';
+
+// Same method as the presidential page (valid-vote average -> Dirichlet simulation -> 50% rule),
+// fed with the Rio de Janeiro governor polls. The concentration cap is lower than the presidential
+// one (300): state polls are smaller and tend to miss by more than national ones.
+const POLLS = 50;
+const SIMS = 200_000;
+const SEED = 2026;
+const CONCENTRATION = 200;
+const PAGE = 'Pesquisas_eleitorais_para_a_elei%C3%A7%C3%A3o_estadual_de_2026_no_Rio_de_Janeiro';
+
+export interface GovernorOdds {
+  generatedAt: string;
+  electionDate: string;
+  simulations: number;
+  pollsRequested: number;
+  pollsUsed: number;
+  oldestPoll: string;
+  newestPoll: string;
+  firstRoundWin: { paes: number; ruas: number };
+  /** probability that nobody passes 50% of valid votes */
+  runoffNeeded: number;
+  /** probability that the runoff is exactly Paes vs Ruas */
+  runoffPaesRuas: number;
+  /** every other runoff pairing, most likely first */
+  otherRunoffs: { a: string; b: string; p: number }[];
+}
+
+const find = (names: string[], needle: string) => {
+  const name = names.find((n) => n.includes(needle));
+  if (!name) throw new Error(`Candidate "${needle}" not found in the poll table (found: ${names.join(', ')})`);
+  return name;
+};
+
+const median = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
+};
+
+export async function computeGovernorOdds(): Promise<GovernorOdds> {
+  const [wikiRows, tsePolls] = await Promise.all([
+    fetchStatePolls(PAGE, 'governor'),
+    fetchPolls({ scope: 'RJ', cargo: /governador/i }),
+  ]);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+  // Garotinho is assumed to be a valid candidate: scenario 1 is the one that lists him
+  const scenario1 = wikiRows.filter((r) => r.scenario === '1');
+
+  // the last N distinct poll rows behind released TSE polls (newest release first)
+  const rows = new Set<(typeof scenario1)[number]>();
+  for (const t of tsePolls.filter((t) => t.divulgacao <= today)) {
+    for (const w of scenario1) if (matchesPoll(t, w)) rows.add(w);
+    if (rows.size >= POLLS) break;
+  }
+  const picked = [...rows].sort((a, b) => b.end.localeCompare(a.end)).slice(0, POLLS);
+
+  // "-" means a candidate was not listed. For minor candidates (typically under 2%) that is read as ~0;
+  // a poll that omits a major candidate stays incomplete and is skipped by the model.
+  const names = Object.keys(picked[0].values);
+  const minor = new Set(names.filter((n) => median(picked.map((p) => p.values[n]).filter((v): v is number => v !== null)) < 2));
+  const polls: WikiPoll[] = picked.map((p) => ({
+    round: 1,
+    pollster: p.pollster,
+    period: p.period,
+    end: p.end,
+    values: Object.fromEntries(names.map((n) => [n, p.values[n] ?? (minor.has(n) ? 0 : null)])),
+    others: p.others ?? 0,
+    undecided: p.undecided,
+    margin: '',
+    sample: p.sample,
+  }));
+
+  const f = forecast(polls, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: 7, designEffect: 2 });
+
+  const paes = find(names, 'Paes');
+  const ruas = find(names, 'Ruas');
+  const win = (name: string) => f.firstRoundWin.find((c) => c.name === name)!.p;
+  const isMain = (x: { a: string; b: string }) => [x.a, x.b].includes(paes) && [x.a, x.b].includes(ruas);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    electionDate: ELECTION_DATE,
+    simulations: SIMS,
+    pollsRequested: POLLS,
+    pollsUsed: f.pollsUsed,
+    oldestPoll: f.oldest,
+    newestPoll: f.newest,
+    firstRoundWin: { paes: win(paes), ruas: win(ruas) },
+    runoffNeeded: f.runoffNeeded,
+    runoffPaesRuas: f.pairings.find(isMain)?.p ?? 0,
+    otherRunoffs: f.pairings.filter((x) => !isMain(x)),
+  };
+}
