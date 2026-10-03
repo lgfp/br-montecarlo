@@ -6,6 +6,23 @@
     en: { president: 'President', 'rj-senate': 'RJ · Senate', 'rj-governor': 'RJ · Governor', 'sc-senate': 'SC · Senate', 'sc-governor': 'SC · Governor', pages: 'Pages' },
   };
 
+  const INTENTION = {
+    'pt-BR': {
+      title: 'Intenção de voto agregada',
+      valid: 'Média das pesquisas, em % dos votos válidos. A margem é o intervalo de 95% do modelo (± pontos percentuais) e inclui erros além do amostral, por isso é maior que a de uma pesquisa isolada.',
+      named: 'Média das pesquisas em que o eleitor cita dois nomes, em % dos votos citados (cada eleitor vota em dois). A margem é o intervalo de 95% do modelo (± pontos percentuais) e inclui erros além do amostral.',
+      others: 'Outros',
+      pp: 'p.p.',
+    },
+    en: {
+      title: 'Aggregated vote intention',
+      valid: 'Poll average, as % of valid votes. The margin is the model’s 95% interval (± percentage points) and includes errors beyond sampling, so it is wider than a single poll’s.',
+      named: 'Average of polls where respondents name two candidates, as % of the votes named (each voter has two votes). The margin is the model’s 95% interval (± percentage points) and includes errors beyond sampling.',
+      others: 'Others',
+      pp: 'pp',
+    },
+  };
+
   const readLang = (strings) => {
     const fromUrl = new URLSearchParams(location.search).get('lang');
     let stored = null;
@@ -27,6 +44,44 @@
     updated: (iso) => new Intl.DateTimeFormat(lang, { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso)),
   });
 
+  const node = (tag, className, text) => {
+    const n = document.createElement(tag);
+    if (className) n.className = className;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+
+  // Aggregated vote intention: one row per candidate with the poll average, its 95% margin, and a bar
+  // (fill = average, band = margin). Rows that round to 0.0% are left out.
+  const renderIntention = (box, data, lang) => {
+    const t = INTENTION[lang];
+    const pct = new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const pp = new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const rows = [...data.rows];
+    if (data.others) rows.push({ name: t.others, party: '', share: data.others.share, margin: data.others.margin });
+    const shown = rows.filter((r) => r.share >= 0.0005);
+    const scale = Math.max(...shown.map((r) => r.share + r.margin));
+
+    const list = node('ul', 'intention-rows');
+    for (const r of shown) {
+      const li = node('li');
+      const name = node('span', 'who', r.name);
+      if (r.party) name.append(node('span', 'party-tag', r.party));
+      const value = node('span', 'value', pct.format(r.share));
+      value.append(node('span', 'margin', `± ${pp.format(r.margin * 100)} ${t.pp}`));
+      const track = node('div', 'track');
+      const band = node('span', 'band');
+      band.style.left = `${(Math.max(0, r.share - r.margin) / scale) * 100}%`;
+      band.style.width = `${((Math.min(scale, r.share + r.margin) - Math.max(0, r.share - r.margin)) / scale) * 100}%`;
+      const fill = node('span', 'fill');
+      fill.style.width = `${(r.share / scale) * 100}%`;
+      track.append(band, fill);
+      li.append(name, value, track);
+      list.append(li);
+    }
+    box.replaceChildren(node('h3', '', t.title), node('p', 'hint', t[data.basis]), list);
+  };
+
   window.Site = {
     json: (id) => JSON.parse(document.getElementById(id).textContent),
 
@@ -34,8 +89,9 @@
      * strings: { 'pt-BR': {...}, en: {...} }. Values may be functions of the helpers.
      * Elements with data-i18n get textContent, data-i18n-html get innerHTML.
      * render(lang, t, h) runs after every language change for page-specific parts.
+     * intention (optional): the aggregated vote intention to draw into #intention.
      */
-    start(strings, render) {
+    start(strings, render, intention) {
       const apply = (lang) => {
         const t = strings[lang];
         const h = helpers(lang);
@@ -47,6 +103,8 @@
         document.querySelectorAll('[data-nav]').forEach((el) => { el.textContent = NAV[lang][el.dataset.nav]; });
         document.querySelector('.tabs')?.setAttribute('aria-label', NAV[lang].pages);
         document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+        const box = document.getElementById('intention');
+        if (box && intention) renderIntention(box, intention, lang);
         render(lang, t, h);
       };
 

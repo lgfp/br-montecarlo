@@ -2,7 +2,7 @@ import { fetchPolls } from './tse.ts';
 import { matchesPoll } from './wikipedia.ts';
 import { fetchStatePolls } from './senate-wikipedia.ts';
 import type { State } from './states.ts';
-import { ELECTION_DATE } from './forecast.ts';
+import { ELECTION_DATE, type Intention } from './forecast.ts';
 import { forecastSenate, type SenateForecast } from './senate-forecast.ts';
 
 // Default model parameters. The concentration cap is lower than the presidential one (300):
@@ -26,6 +26,7 @@ export interface SenateOdds {
   candidates: { name: string; party: string; p: number; share: number }[];
   /** probability of each pair taking the two seats */
   pairs: { a: string; b: string; p: number }[];
+  intention: Intention;
 }
 
 export async function computeSenateOdds(state: State): Promise<{ odds: SenateOdds; forecast: SenateForecast }> {
@@ -57,6 +58,11 @@ export async function computeSenateOdds(state: State): Promise<{ odds: SenateOdd
       newestPoll: f.newest,
       candidates: f.win.map((c) => ({ name: c.name, party: f.parties[c.name] ?? '', p: c.p, share: share.get(c.name)! })),
       pairs: f.pairs,
+      intention: {
+        basis: 'named',
+        rows: f.shares.map((c) => ({ name: c.name, party: f.parties[c.name] ?? '', share: c.share, margin: c.margin })),
+        others: { share: f.othersShare, margin: f.othersMargin },
+      },
     },
   };
 }

@@ -13,6 +13,14 @@ import type { WikiPoll } from './wikipedia.ts';
  *    wins in the first round, otherwise the top two go to a runoff.
  */
 
+/** Aggregated vote intention shown at the bottom of each page */
+export interface Intention {
+  /** 'valid': share of the valid vote; 'named': share of all votes named (Senate, two votes per voter) */
+  basis: 'valid' | 'named';
+  rows: { name: string; party: string; share: number; /** 95% half-width, as a fraction */ margin: number }[];
+  others: { share: number; margin: number } | null;
+}
+
 export const ELECTION_DATE = '2026-10-04';
 
 export interface ForecastOptions {
@@ -32,8 +40,9 @@ export interface Forecast {
   newest: string;
   concentration: number;
   /** aggregated share of the valid vote, per candidate */
-  shares: { name: string; share: number }[];
+  shares: { name: string; share: number; /** 95% half-width of the simulated share, as a fraction */ margin: number }[];
   othersShare: number;
+  othersMargin: number;
   /** probability of winning outright (> 50% of valid votes) */
   firstRoundWin: { name: string; p: number }[];
   /** probability that nobody wins outright */
@@ -107,9 +116,12 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
   const pairs = new Map<string, number>();
   let runoffs = 0;
   const g = new Array<number>(k + 1);
+  // running sums of each simulated share, for the 95% margin
+  const sum = new Array<number>(k + 1).fill(0), sumSq = new Array<number>(k + 1).fill(0);
   for (let s = 0; s < opt.sims; s++) {
     let total = 0;
     for (let i = 0; i <= k; i++) total += g[i] = gamma(Math.max(concentration * mean[i], 1e-6), rand);
+    for (let i = 0; i <= k; i++) { const x = g[i] / total; sum[i] += x; sumSq[i] += x * x; }
     let first = -1, second = -1;
     for (let i = 0; i < k; i++) {
       if (first < 0 || g[i] > g[first]) { second = first; first = i; }
@@ -123,14 +135,17 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
     }
   }
 
+  const margin = (i: number) => 1.96 * Math.sqrt(Math.max(0, sumSq[i] / opt.sims - (sum[i] / opt.sims) ** 2));
+
   const dates = usable.map((p) => p.end).sort();
   return {
     pollsUsed: usable.length,
     oldest: dates[0],
     newest: dates[dates.length - 1],
     concentration,
-    shares: names.map((name, i) => ({ name, share: mean[i] })).sort((a, b) => b.share - a.share),
+    shares: names.map((name, i) => ({ name, share: mean[i], margin: margin(i) })).sort((a, b) => b.share - a.share),
     othersShare: mean[k],
+    othersMargin: margin(k),
     firstRoundWin: names.map((name, i) => ({ name, p: wins[i] / opt.sims })).sort((a, b) => b.p - a.p),
     runoffNeeded: runoffs / opt.sims,
     pairings: [...pairs].map(([key, c]) => {

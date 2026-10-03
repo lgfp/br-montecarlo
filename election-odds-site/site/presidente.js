@@ -44,5 +44,5 @@
       document.querySelector(`[data-odds="${key}"]`).textContent = h.pct(p);
       document.querySelector(`[data-meter="${key}"]`).style.setProperty('--p', p);
     }
-  });
+  }, ODDS.intention);
 })();

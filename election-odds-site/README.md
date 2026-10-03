@@ -10,6 +10,10 @@ Static site (pt-BR by default, EN toggle). Tabs are ordered president first (the
 | SC · Senado | `/senado-sc/` | Same as RJ · Senado, for Santa Catarina |
 | SC · Governo | `/governo-sc/` | Same as RJ · Governo, for Santa Catarina |
 
+Every page ends its "Como funciona" section with an **aggregated vote intention** box: each candidate's poll average with a 95% margin
+(± percentage points) taken from the model's simulations, so it includes error beyond sampling and is wider than one poll's margin.
+President and governors show % of valid votes; Senate pages show % of the votes named (two votes per voter).
+
 Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1%" in the main boxes), and above 99% is shown as ">99%".
 
 ## Models

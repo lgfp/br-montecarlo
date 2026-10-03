@@ -94,5 +94,5 @@
     document.getElementById('others').replaceChildren(...textOnly.map((c) => row(c.party ? `${c.name} (${c.party})` : c.name, c.p, h)));
 
     document.getElementById('pairs').replaceChildren(...ODDS.pairs.filter((x) => x.p >= MIN).map((x) => row(`${x.a} + ${x.b}`, x.p, h)));
-  });
+  }, ODDS.intention);
 })();

@@ -1,7 +1,7 @@
 import { fetchPolls } from './tse.ts';
 import { matchesPoll, type WikiPoll } from './wikipedia.ts';
 import { fetchStatePolls } from './senate-wikipedia.ts';
-import { ELECTION_DATE, forecast } from './forecast.ts';
+import { ELECTION_DATE, forecast, type Intention } from './forecast.ts';
 import type { State } from './states.ts';
 
 // Same method as the presidential page (valid-vote average -> Dirichlet simulation -> 50% rule),
@@ -38,6 +38,7 @@ export interface GovernorOdds {
   runoffLeaders: number;
   /** every other runoff pairing, most likely first */
   otherRunoffs: { a: string; b: string; p: number }[];
+  intention: Intention;
 }
 
 const median = (xs: number[]) => {
@@ -101,5 +102,10 @@ export async function computeGovernorOdds(state: State): Promise<GovernorOdds> {
     runoffNeeded: f.runoffNeeded,
     runoffLeaders: f.pairings.find(isMain)?.p ?? 0,
     otherRunoffs: f.pairings.filter((x) => !isMain(x)),
+    intention: {
+      basis: 'valid',
+      rows: f.shares.map((c) => ({ name: c.name, party: parties[c.name] ?? '', share: c.share, margin: c.margin })),
+      others: { share: f.othersShare, margin: f.othersMargin },
+    },
   };
 }

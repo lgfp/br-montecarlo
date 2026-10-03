@@ -1,6 +1,6 @@
 import { fetchPresidentialPolls } from './tse.ts';
 import { fetchWikipediaPolls, matchesPoll, type WikiPoll } from './wikipedia.ts';
-import { ELECTION_DATE, forecast, type Forecast } from './forecast.ts';
+import { ELECTION_DATE, forecast, type Forecast, type Intention } from './forecast.ts';
 
 // Default model parameters (same defaults as the CLI's --forecast mode)
 const POLLS = 50;
@@ -20,6 +20,7 @@ export interface Odds {
   firstRoundWin: { flavio: number; lula: number };
   /** probability that the runoff is exactly Lula vs Flávio Bolsonaro */
   runoffLulaFlavio: number;
+  intention: Intention;
 }
 
 const find = (names: string[], needle: string) => {
@@ -60,6 +61,15 @@ export async function computeOdds(): Promise<{ odds: Odds; forecast: Forecast }>
       newestPoll: f.newest,
       firstRoundWin: { flavio: win(flavio), lula: win(lula) },
       runoffLulaFlavio: runoff,
+      intention: {
+        basis: 'valid',
+        // labels are "Lula PT", "F. Bolsonaro PL": the last word is the party
+        rows: f.shares.map((c) => {
+          const m = c.name.match(/^(.*)\s(\S+)$/);
+          return { name: m ? m[1] : c.name, party: m ? m[2] : '', share: c.share, margin: c.margin };
+        }),
+        others: { share: f.othersShare, margin: f.othersMargin },
+      },
     },
   };
 }

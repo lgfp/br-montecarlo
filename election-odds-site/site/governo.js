@@ -96,5 +96,5 @@
       li.append(el('span', 'names', `${x.a} × ${x.b}`), el('span', 'odds', h.pct(x.p)), meter(x.p, 'meter accent'));
       return li;
     }));
-  });
+  }, ODDS.intention);
 })();

@@ -37,7 +37,9 @@ export interface SenateForecast {
   newest: string;
   concentration: number;
   /** aggregated share of all named votes, per candidate */
-  shares: { name: string; share: number }[];
+  shares: { name: string; share: number; /** 95% half-width of the simulated share, as a fraction */ margin: number }[];
+  othersShare: number;
+  othersMargin: number;
   /** probability of finishing in the top two */
   win: { name: string; p: number }[];
   /** probability of each pair taking the two seats (unordered) */
@@ -80,8 +82,12 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
   const wins = new Array<number>(k).fill(0);
   const pairs = new Map<string, number>();
   const g = new Array<number>(k + 1);
+  // running sums of each simulated share, for the 95% margin
+  const sum = new Array<number>(k + 1).fill(0), sumSq = new Array<number>(k + 1).fill(0);
   for (let s = 0; s < opt.sims; s++) {
-    for (let i = 0; i <= k; i++) g[i] = gamma(Math.max(concentration * mean[i], 1e-6), rand);
+    let total = 0;
+    for (let i = 0; i <= k; i++) total += g[i] = gamma(Math.max(concentration * mean[i], 1e-6), rand);
+    for (let i = 0; i <= k; i++) { const x = g[i] / total; sum[i] += x; sumSq[i] += x * x; }
     let first = -1, second = -1;
     for (let i = 0; i < k; i++) {
       if (first < 0 || g[i] > g[first]) { second = first; first = i; }
@@ -91,6 +97,8 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
     const key = first < second ? `${first},${second}` : `${second},${first}`;
     pairs.set(key, (pairs.get(key) ?? 0) + 1);
   }
+
+  const margin = (i: number) => 1.96 * Math.sqrt(Math.max(0, sumSq[i] / opt.sims - (sum[i] / opt.sims) ** 2));
 
   const dates = usable.map((p) => p.end).sort();
   return {
@@ -102,7 +110,9 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
     oldest: dates[0],
     newest: dates[dates.length - 1],
     concentration,
-    shares: names.map((name, i) => ({ name, share: mean[i] })).sort((a, b) => b.share - a.share),
+    shares: names.map((name, i) => ({ name, share: mean[i], margin: margin(i) })).sort((a, b) => b.share - a.share),
+    othersShare: mean[k],
+    othersMargin: margin(k),
     win: names.map((name, i) => ({ name, p: wins[i] / opt.sims })).sort((a, b) => b.p - a.p),
     pairs: [...pairs].map(([key, c]) => {
       const [i, j] = key.split(',').map(Number).sort((x, y) => mean[y] - mean[x]);
