@@ -249,7 +249,10 @@ h2 {
   .senate-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
   .senate-grid[data-count="1"] { grid-template-columns: minmax(0, 360px); justify-content: center; }
   .senate-grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 360px)); justify-content: center; }
-  .senate-grid[data-count="4"] { grid-template-columns: repeat(4, 1fr); }
+  .senate-grid[data-count="4"] { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  /* four across: names may wrap, so reserve two lines to keep the numbers aligned */
+  .senate-grid[data-count="4"] h2 { min-height: 2.3em; display: flex; align-items: center; justify-content: center; font-size: clamp(1.15rem, 1.9vw, 1.5rem); }
+  .senate-grid[data-count="4"] .big { font-size: clamp(2.8rem, 4.8vw, 4.4rem); }
 }
 
 /* ---- aggregated vote intention ---- */
