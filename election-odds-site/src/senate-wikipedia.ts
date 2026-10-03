@@ -79,7 +79,7 @@ type Race = 'senate' | 'governor';
  * "Pesquisas eleitorais para a eleição estadual de 2026 em Santa Catarina" (already URL-encoded in `page`).
  */
 const pages = new Map<string, Promise<string>>();
-const pageHtml = (page: string) => {
+export const pageHtml = (page: string) => {
   let html = pages.get(page);
   if (!html) {
     html = (async () => {

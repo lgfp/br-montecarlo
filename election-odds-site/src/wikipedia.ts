@@ -113,12 +113,20 @@ function sameDay(a: string, b: string, toleranceDays: number): boolean {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= toleranceDays * 86_400_000;
 }
 
-// Wikipedia has no TSE registration number, so match on pollster + fieldwork end date
+// Wikipedia has no TSE registration number, so match on pollster + fieldwork end date.
+// Names like "Futura/Apex" or "PoderData/Aya" list co-signers: any one of them may be the registered name.
 export function matchesPoll(tsePoll: TsePoll, wikiPoll: Pick<WikiPoll, 'pollster' | 'end'>): boolean {
-  const wiki = tokens(wikiPoll.pollster);
+  const alternatives = wikiPoll.pollster.split('/').map(tokens).filter((t) => t.length);
   const nameOk = tsePoll.names.some((n) => {
     const t = tokens(n);
-    return wiki.every((w) => t.some((x) => x.startsWith(w)));
+    return alternatives.some((alt) => alt.every((w) => t.some((x) => x.startsWith(w))));
   });
   return nameOk && sameDay(tsePoll.fim, wikiPoll.end, 1);
+}
+
+/** two Wikipedia pollster labels that share a word ("Futura/Apex" and "Apex/Futura") name the same pollster */
+export function samePollster(a: string, b: string): boolean {
+  const words = (s: string) => new Set(tokens(s).filter((w) => w.length >= 3));
+  const wb = words(b);
+  return [...words(a)].some((w) => wb.has(w));
 }

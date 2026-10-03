@@ -21,6 +21,12 @@ export interface Intention {
   others: { share: number; margin: number } | null;
 }
 
+/**
+ * Sampling error stops mattering long before a poll reaches 40,000 interviews (house effects and other
+ * non-sampling error dominate), so a poll never counts for more than this many respondents.
+ */
+const MAX_WEIGHTED_SAMPLE = 5000;
+
 export const ELECTION_DATE = '2026-10-04';
 
 export interface ForecastOptions {
@@ -96,7 +102,7 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
   for (const p of usable) {
     const raw = [...names.map((n) => p.values[n] as number), p.others ?? 0];
     const total = raw.reduce((s, v) => s + v, 0);
-    const n = p.sample ?? 1000;
+    const n = Math.min(p.sample ?? 1000, MAX_WEIGHTED_SAMPLE);
     const decay = Math.pow(0.5, Math.max(0, daysBetween(p.end, opt.today)) / opt.halfLifeDays);
     const w = n * decay;
     raw.forEach((v, i) => (avg[i] += (w * v) / total));

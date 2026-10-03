@@ -19,7 +19,10 @@ Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1
 ## Models
 
 - **President** (same as the CLI's `--forecast`): last 50 TSE-registered polls with a Wikipedia row → weighted valid-vote average →
-  200k Dirichlet simulations with the Brazilian 50% rule (`src/odds.ts`, concentration cap 300).
+  200k Dirichlet simulations with the Brazilian 50% rule (`src/odds.ts`, concentration cap 300). Rows come from **both** English and
+  Portuguese Wikipedia: the English page is the base and Portuguese rows (`src/president-pt.ts`) are added only for polls the English
+  page does not have (it is often about a day ahead and lists pollsters the English page omits). If the Portuguese page fails or
+  changes layout, the build falls back to English alone. A poll never weighs more than 5,000 respondents (`src/forecast.ts`).
 - **Governor** (`src/governor-odds.ts`): the same model fed with a state's governor polls from the pt.wikipedia table, scenario 1
   (the full ballot), that match a TSE registration; concentration cap 200 (state polls err more). The two candidates with the highest
   average are the "leaders". Any other runoff pairing above 1% is listed as text.
@@ -50,5 +53,5 @@ npm run serve      # preview dist/ locally
 
 - `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts` for any pt.wikipedia state table), models, `states.ts`, `build.ts`
 - `site/` – page templates (`index`, `governo`, `senado`), styles, scripts (`common.js` shared), portraits
-- Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt every 3 hours).
+- Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt every hour).
   In the repo settings, set **Pages → Source** to **GitHub Actions**.
