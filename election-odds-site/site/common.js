@@ -2,8 +2,8 @@
 (() => {
   const DEFAULT_LANG = 'pt-BR';
   const NAV = {
-    'pt-BR': { president: 'Presidente', senate: 'Senado · SC', governor: 'Governo · RJ', pages: 'Páginas' },
-    en: { president: 'President', senate: 'Senate · SC', governor: 'Governor · RJ', pages: 'Pages' },
+    'pt-BR': { president: 'Presidente', 'rj-senate': 'RJ · Senado', 'rj-governor': 'RJ · Governo', 'sc-senate': 'SC · Senado', 'sc-governor': 'SC · Governo', pages: 'Páginas' },
+    en: { president: 'President', 'rj-senate': 'RJ · Senate', 'rj-governor': 'RJ · Governor', 'sc-senate': 'SC · Senate', 'sc-governor': 'SC · Governor', pages: 'Pages' },
   };
 
   const readLang = (strings) => {
@@ -18,6 +18,7 @@
     lang,
     pct(p) {
       if (p < 0.01) return '<1%';
+      if (p > 0.99) return '>99%';
       return new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: p < 0.1 ? 1 : 0 }).format(p);
     },
     int: (n) => new Intl.NumberFormat(lang).format(n),
@@ -48,6 +49,11 @@
         document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
         render(lang, t, h);
       };
+
+      // on narrow screens the tab row scrolls sideways: start with the current tab in view
+      const tabs = document.querySelector('.tabs');
+      const current = tabs?.querySelector('[aria-current]');
+      if (current) tabs.scrollLeft = current.offsetLeft - (tabs.clientWidth - current.offsetWidth) / 2;
 
       document.querySelectorAll('.lang button').forEach((b) => b.addEventListener('click', () => {
         try { localStorage.setItem('lang', b.dataset.lang); } catch { /* ignore */ }

@@ -78,11 +78,22 @@ type Race = 'senate' | 'governor';
  * Campaign-period ("Agosto - Outubro") first-round governor table, or Senate table, of a state page such as
  * "Pesquisas eleitorais para a eleição estadual de 2026 em Santa Catarina" (already URL-encoded in `page`).
  */
+const pages = new Map<string, Promise<string>>();
+const pageHtml = (page: string) => {
+  let html = pages.get(page);
+  if (!html) {
+    html = (async () => {
+      const res = await fetch(api(page), { headers: { 'User-Agent': 'br-montecarlo/1.0 (https://github.com/lgfp/br-montecarlo)' } });
+      if (!res.ok) throw new Error(`Wikipedia (pt) fetch failed: HTTP ${res.status} for ${page}`);
+      return ((await res.json()) as { parse: { text: string } }).parse.text;
+    })();
+    pages.set(page, html);
+  }
+  return html;
+};
+
 export async function fetchStatePolls(page: string, race: Race): Promise<SenatePoll[]> {
-  const res = await fetch(api(page), { headers: { 'User-Agent': 'br-montecarlo/1.0 (https://github.com/lgfp/br-montecarlo)' } });
-  if (!res.ok) throw new Error(`Wikipedia (pt) fetch failed: HTTP ${res.status}`);
-  const { parse } = (await res.json()) as { parse: { text: string } };
-  const $ = cheerio.load(parse.text);
+  const $ = cheerio.load(await pageHtml(page));
   const wantH2 = race === 'senate' ? /^Senador$/i : /^Primeiro Turno \(Governador\)/i;
 
   const polls: SenatePoll[] = [];
@@ -101,5 +112,3 @@ export async function fetchStatePolls(page: string, race: Race): Promise<SenateP
   return polls;
 }
 
-export const fetchSantaCatarinaSenatePolls = () =>
-  fetchStatePolls('Pesquisas_eleitorais_para_a_elei%C3%A7%C3%A3o_estadual_de_2026_em_Santa_Catarina', 'senate');

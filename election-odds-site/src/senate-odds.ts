@@ -1,16 +1,18 @@
 import { fetchPolls } from './tse.ts';
 import { matchesPoll } from './wikipedia.ts';
-import { fetchSantaCatarinaSenatePolls } from './senate-wikipedia.ts';
+import { fetchStatePolls } from './senate-wikipedia.ts';
+import type { State } from './states.ts';
 import { ELECTION_DATE } from './forecast.ts';
 import { forecastSenate, type SenateForecast } from './senate-forecast.ts';
 
 // Default model parameters. The concentration cap is lower than the presidential one (300):
-// state polls are small, there are few pollsters, and second-vote behavior is uncertain.
+// state polls are small, there are few two-vote polls, and second-vote behavior is uncertain.
 const SIMS = 200_000;
 const SEED = 2026;
 const CONCENTRATION = 150;
 
 export interface SenateOdds {
+  uf: string;
   generatedAt: string;
   electionDate: string;
   seats: 2;
@@ -26,10 +28,10 @@ export interface SenateOdds {
   pairs: { a: string; b: string; p: number }[];
 }
 
-export async function computeSenateOdds(): Promise<{ odds: SenateOdds; forecast: SenateForecast }> {
+export async function computeSenateOdds(state: State): Promise<{ odds: SenateOdds; forecast: SenateForecast }> {
   const [wikiPolls, tsePolls] = await Promise.all([
-    fetchSantaCatarinaSenatePolls(),
-    fetchPolls({ scope: 'SC', cargo: /senador/i }),
+    fetchStatePolls(state.wikiPage, 'senate'),
+    fetchPolls({ scope: state.uf, cargo: /senador/i }),
   ]);
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
@@ -43,6 +45,7 @@ export async function computeSenateOdds(): Promise<{ odds: SenateOdds; forecast:
   return {
     forecast: f,
     odds: {
+      uf: state.uf,
       generatedAt: new Date().toISOString(),
       electionDate: ELECTION_DATE,
       seats: 2,

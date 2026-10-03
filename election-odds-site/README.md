@@ -1,34 +1,49 @@
 # Election odds site
 
-Static site (pt-BR by default, EN toggle) with three pages:
+Static site (pt-BR by default, EN toggle). Tabs are ordered president first (the default page), then by state, then by office:
 
-- **Presidente** (`/`): odds of Lula and Flávio Bolsonaro winning the first round, and of a runoff between the two.
-- **Senado · SC** (`/senado-sc/`): odds of each Santa Catarina Senate candidate winning one of the two seats
-  (two votes per voter, no runoff: the two most voted win).
-- **Governo · RJ** (`/governo-rj/`): odds of Eduardo Paes and Douglas Ruas winning the first round, and of a Paes–Ruas runoff;
-  any other runoff pairing above 1% is listed as text. Garotinho is assumed to be a valid candidate (his registration is under
-  appeal), so the poll scenario that includes him is used.
+| Tab | Path | What it shows |
+|---|---|---|
+| Presidente | `/` | Lula and Flávio Bolsonaro: first-round win odds, and the odds of a runoff between them |
+| RJ · Senado | `/senado-rj/` | Odds of each Rio de Janeiro Senate candidate winning one of the two seats |
+| RJ · Governo | `/governo-rj/` | Rio governor: the two leaders' first-round win odds and the odds of a runoff between them |
+| SC · Senado | `/senado-sc/` | Same as RJ · Senado, for Santa Catarina |
+| SC · Governo | `/governo-sc/` | Same as RJ · Governo, for Santa Catarina |
 
-The odds are computed at build time.
+Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1%" in the main boxes), and above 99% is shown as ">99%".
 
-- Presidential model (same as the CLI's `--forecast`): last 50 TSE-registered polls with a Wikipedia row → weighted valid-vote
-  average → 200k Dirichlet simulations with the Brazilian 50% rule. Defaults in `src/odds.ts`.
-- Governor model (`src/governor-odds.ts`): the presidential model fed with the Rio de Janeiro governor polls (pt.wikipedia
-  table, scenario 1) that match a TSE registration; concentration cap 200 (state polls err more than national ones).
-- Senate model (`src/senate-forecast.ts`): only complete **two-vote** polls are used (rows summing to well over 100%), because
-  they measure what decides the race; first-choice polls and polls missing candidates are excluded. Polls become shares of all
-  named votes, are averaged (sample size × recency) and simulated; the top two in each simulation win. Polls come from the
-  Portuguese Wikipedia page for Santa Catarina and must match a TSE registration. Defaults in `src/senate-odds.ts`.
+## Models
+
+- **President** (same as the CLI's `--forecast`): last 50 TSE-registered polls with a Wikipedia row → weighted valid-vote average →
+  200k Dirichlet simulations with the Brazilian 50% rule (`src/odds.ts`, concentration cap 300).
+- **Governor** (`src/governor-odds.ts`): the same model fed with a state's governor polls from the pt.wikipedia table, scenario 1
+  (the full ballot), that match a TSE registration; concentration cap 200 (state polls err more). The two candidates with the highest
+  average are the "leaders". Any other runoff pairing above 1% is listed as text.
+- **Senate** (`src/senate-forecast.ts`, `src/senate-odds.ts`): only complete **two-vote** polls are used (rows summing to well over
+  100%), because they measure what decides the race; first-choice polls, polls missing candidates and polls with no TSE
+  registration are excluded. Polls become shares of all named votes, are averaged (sample size × recency) and simulated; the top two
+  in each simulation win. Concentration cap 150.
+
+## Adding or changing a state
+
+`src/states.ts` lists the states (pt.wikipedia poll page, place name, optional note such as a candidacy under appeal). Page order
+and labels are in `TABS` in `src/build.ts` and `NAV` in `site/common.js`.
+
+## Portraits
+
+Optional, one file per candidate named after them: `site/img/<page>/<candidate-slug>.webp` (or `.png`/`.jpg`), e.g.
+`site/img/senado-sc/caroline-de-toni.webp`, `site/img/governo-rj/eduardo-paes.webp`. Transparent 782×926 works best.
+Without a file, a governor's card is shown without a portrait, and a Senate candidate is listed as text.
+
+## Run
 
 ```bash
 npm ci
-npm run build      # fetches live data, writes dist/ (index.html, senado-sc/, data.json files, assets)
+npm run build      # fetches live data, writes dist/
 npm run serve      # preview dist/ locally
 ```
 
-- `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts` for any pt.wikipedia state table), models (`forecast.ts`, `senate-forecast.ts`, `governor-odds.ts`), build
-- `site/` – page templates, styles, scripts (`common.js` shared; one script per page), portraits
-- Governor portraits live in `site/img/governo-rj/`. Senate portraits are optional: drop `site/img/senado/<candidate-slug>.webp` (or `.png`/`.jpg`), e.g. `caroline-de-toni.webp`;
-  a candidate above 1% without a portrait is listed as text ("Outros candidatos com chance acima de 1%") before the combinations.
+- `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts` for any pt.wikipedia state table), models, `states.ts`, `build.ts`
+- `site/` – page templates (`index`, `governo`, `senado`), styles, scripts (`common.js` shared), portraits
 - Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt every 3 hours).
   In the repo settings, set **Pages → Source** to **GitHub Actions**.

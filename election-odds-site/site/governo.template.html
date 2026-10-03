@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>__TITLE__</title>
+  <meta name="description" content="__DESCRIPTION__">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2315130f'/%3E%3Cpath d='M7 22V10h3v12zm7 0V10h3v12zm7 0V10h3v12z' fill='%23f3eee3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="__ROOT__style.css">
+</head>
+<body data-root="__ROOT__">
+  <div class="page">
+    <header class="top">
+      <span class="eyebrow" data-i18n="eyebrow"></span>
+      <div class="lang" role="group" aria-label="Idioma / Language">
+        <button type="button" data-lang="pt-BR" aria-pressed="true">PT</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+
+    __NAV__
+
+    <main>
+      <h1 data-i18n="title"></h1>
+      <p class="lede" data-i18n="lede"></p>
+
+      <noscript><p class="lede">__NOSCRIPT__</p></noscript>
+
+      <section class="stage" id="stage" aria-live="polite"></section>
+
+      <section class="pairs" id="others-section" hidden>
+        <h3 data-i18n="othersTitle"></h3>
+        <p class="hint" data-i18n="othersHint"></p>
+        <ul id="others"></ul>
+      </section>
+
+      <section class="method">
+        <h3 data-i18n="methodTitle"></h3>
+        <p data-i18n="method"></p>
+        <p data-i18n="candidacy"></p>
+        <p data-i18n="caveat"></p>
+        <p class="meta" data-i18n="meta"></p>
+        <p class="meta" data-i18n-html="sources"></p>
+      </section>
+    </main>
+  </div>
+
+  <script type="application/json" id="odds">__ODDS_JSON__</script>
+  <script src="__ROOT__common.js"></script>
+  <script src="__ROOT__governo.js"></script>
+</body>
+</html>
