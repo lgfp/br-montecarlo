@@ -35,18 +35,25 @@ function parseCsv(text: string): string[][] {
 
 const day = (s: string) => s.slice(0, 10);
 
-export async function fetchPresidentialPolls({ pollster = '' } = {}): Promise<TsePoll[]> {
-  const res = await fetch(ZIP_URL);
-  if (!res.ok) throw new Error(`TSE download failed: HTTP ${res.status}`);
-  const dir = await unzipper.Open.buffer(Buffer.from(await res.arrayBuffer()));
-  const entry = dir.files.find((f) => f.path.endsWith('_BRASIL.csv'));
-  if (!entry) throw new Error('TSE zip has no *_BRASIL.csv entry');
+let zip: Promise<unzipper.CentralDirectory> | undefined;
+const openZip = () =>
+  (zip ??= (async () => {
+    const res = await fetch(ZIP_URL);
+    if (!res.ok) throw new Error(`TSE download failed: HTTP ${res.status}`);
+    return unzipper.Open.buffer(Buffer.from(await res.arrayBuffer()));
+  })());
+
+/** scope: 'BRASIL' for national registrations, or a state code such as 'SC' */
+export async function fetchPolls({ scope, cargo, pollster = '' }: { scope: string; cargo: RegExp; pollster?: string }): Promise<TsePoll[]> {
+  const dir = await openZip();
+  const entry = dir.files.find((f) => f.path.endsWith(`_${scope}.csv`));
+  if (!entry) throw new Error(`TSE zip has no *_${scope}.csv entry`);
   const [header, ...data] = parseCsv((await entry.buffer()).toString('latin1'));
 
   return data
     .filter((r) => r.length === header.length)
     .map((r) => Object.fromEntries(header.map((h, i) => [h, r[i]])) as Record<string, string>)
-    .filter((p) => /presidente/i.test(p.DS_CARGO))
+    .filter((p) => cargo.test(p.DS_CARGO))
     .filter((p) => p.NM_EMPRESA.toLowerCase().includes(pollster.toLowerCase()))
     .sort((a, b) => b.DT_DIVULGACAO.localeCompare(a.DT_DIVULGACAO))
     .map((p) => ({
@@ -60,3 +67,6 @@ export async function fetchPresidentialPolls({ pollster = '' } = {}): Promise<Ts
       amostra: Number(p.QT_ENTREVISTADO),
     }));
 }
+
+export const fetchPresidentialPolls = (opts: { pollster?: string } = {}) =>
+  fetchPolls({ scope: 'BRASIL', cargo: /presidente/i, ...opts });

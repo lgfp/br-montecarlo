@@ -45,7 +45,7 @@ export interface Forecast {
 const DAY = 86_400_000;
 const daysBetween = (a: string, b: string) => (new Date(b).getTime() - new Date(a).getTime()) / DAY;
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -57,7 +57,7 @@ function mulberry32(seed: number): () => number {
 }
 
 // Marsaglia–Tsang gamma sampler (shape > 0, scale 1)
-function gamma(shape: number, rand: () => number): number {
+export function gamma(shape: number, rand: () => number): number {
   if (shape < 1) return gamma(shape + 1, rand) * Math.pow(rand(), 1 / shape);
   const d = shape - 1 / 3;
   const c = 1 / Math.sqrt(9 * d);

@@ -19,13 +19,13 @@ export interface WikiPoll {
   sample: number | null;
 }
 
-interface Cell { text: string; th: boolean }
+export interface Cell { text: string; th: boolean }
 interface Column { j: number; label: string; candidate: boolean }
 
-const clean = (s: string) => s.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+export const clean = (s: string) => s.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 
 // Expands rowspan/colspan into a rectangular grid of cells
-function toGrid($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>): Cell[][] {
+export function toGrid($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>): Cell[][] {
   const grid: Cell[][] = [];
   table.find('tr').each((r, tr) => {
     grid[r] ??= [];
@@ -114,7 +114,7 @@ function sameDay(a: string, b: string, toleranceDays: number): boolean {
 }
 
 // Wikipedia has no TSE registration number, so match on pollster + fieldwork end date
-export function matchesPoll(tsePoll: TsePoll, wikiPoll: WikiPoll): boolean {
+export function matchesPoll(tsePoll: TsePoll, wikiPoll: Pick<WikiPoll, 'pollster' | 'end'>): boolean {
   const wiki = tokens(wikiPoll.pollster);
   const nameOk = tsePoll.names.some((n) => {
     const t = tokens(n);

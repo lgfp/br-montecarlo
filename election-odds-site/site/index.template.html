@@ -7,27 +7,32 @@
   <meta name="description" content="Probabilidade de Lula e Flávio Bolsonaro vencerem no 1º turno e de um 2º turno entre os dois, calculada a partir das últimas pesquisas registradas no TSE.">
   <meta name="color-scheme" content="light">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2315130f'/%3E%3Cpath d='M7 22V10h3v12zm7 0V10h3v12zm7 0V10h3v12z' fill='%23f3eee3'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="__ROOT__style.css">
 </head>
-<body>
+<body data-root="__ROOT__">
   <div class="page">
     <header class="top">
-      <span class="eyebrow" id="eyebrow"></span>
+      <span class="eyebrow" data-i18n="eyebrow"></span>
       <div class="lang" role="group" aria-label="Idioma / Language">
         <button type="button" data-lang="pt-BR" aria-pressed="true">PT</button>
         <button type="button" data-lang="en" aria-pressed="false">EN</button>
       </div>
     </header>
 
+    <nav class="tabs" aria-label="Páginas">
+      <a href="__ROOT__" data-nav="president" aria-current="page">Presidente</a>
+      <a href="__ROOT__senado-sc/" data-nav="senate">Senado · SC</a>
+    </nav>
+
     <main>
-      <h1 id="title"></h1>
-      <p class="lede" id="lede"></p>
+      <h1 data-i18n="title"></h1>
+      <p class="lede" data-i18n="lede"></p>
 
       <noscript><p class="lede">__NOSCRIPT__</p></noscript>
 
       <section class="stage" aria-live="polite">
         <article class="candidate" id="lula">
-          <figure><img src="img/lula.webp" alt="Retrato em desenho a tinta de Lula" width="782" height="926"></figure>
+          <figure><img src="__ROOT__img/lula.webp" alt="Retrato em desenho a tinta de Lula" width="782" height="926"></figure>
           <h2>Luiz Inácio Lula da Silva</h2>
           <p class="party">PT</p>
           <p class="label" data-i18n="firstRound"></p>
@@ -45,7 +50,7 @@
         </article>
 
         <article class="candidate" id="flavio">
-          <figure><img src="img/flavio.webp" alt="Retrato em desenho a tinta de Flávio Bolsonaro" width="782" height="926"></figure>
+          <figure><img src="__ROOT__img/flavio.webp" alt="Retrato em desenho a tinta de Flávio Bolsonaro" width="782" height="926"></figure>
           <h2>Flávio Bolsonaro</h2>
           <p class="party">PL</p>
           <p class="label" data-i18n="firstRound"></p>
@@ -57,15 +62,16 @@
 
       <section class="method">
         <h3 data-i18n="methodTitle"></h3>
-        <p id="method"></p>
-        <p id="caveat"></p>
-        <p class="meta" id="meta"></p>
-        <p class="meta" id="sources"></p>
+        <p data-i18n="method"></p>
+        <p data-i18n="caveat"></p>
+        <p class="meta" data-i18n="meta"></p>
+        <p class="meta" data-i18n-html="sources"></p>
       </section>
     </main>
   </div>
 
   <script type="application/json" id="odds">__ODDS_JSON__</script>
-  <script src="app.js"></script>
+  <script src="__ROOT__common.js"></script>
+  <script src="__ROOT__presidente.js"></script>
 </body>
 </html>
