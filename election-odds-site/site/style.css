@@ -85,9 +85,7 @@ figure img {
   display: block;
   width: 100%;
   height: auto;
-  /* the drawings sit on white: lifting the near-white frame to pure white and multiplying
-     lets the paper show through without a visible box */
-  filter: brightness(1.07);
+  /* transparent cut-outs; multiply also lets the paper tint the drawings' white areas */
   mix-blend-mode: multiply;
 }
 
