@@ -5,7 +5,7 @@
   "description": "Static page with the odds of Lula and Flávio Bolsonaro in Brazil's 2026 presidential election, computed from TSE-registered polls",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "build": "tsx src/build.ts",
