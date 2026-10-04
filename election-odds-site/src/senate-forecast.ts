@@ -13,7 +13,7 @@ import type { SenatePoll } from './senate-wikipedia.ts';
  * Polls that did not report every candidate are also left out (no honest way to fill the gaps).
  *
  * Each remaining poll is turned into shares of all named votes (this cancels a pollster that
- * inflates everyone), the polls are averaged (sample size x recency), and the result drives a
+ * inflates everyone), the polls are averaged (log of sample size x recency), and the result drives a
  * Dirichlet simulation. Winners of each simulated election: the top two shares.
  */
 
@@ -76,10 +76,12 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
     const raw = [...names.map((n) => p.values[n] as number), p.others ?? 0];
     const sum = raw.reduce((s, v) => s + v, 0);
     const n = p.sample ?? 1000;
-    const w = n * Math.pow(0.5, Math.max(0, daysBetween(p.end, opt.today)) / opt.halfLifeDays);
+    const decay = Math.pow(0.5, Math.max(0, daysBetween(p.end, opt.today)) / opt.halfLifeDays);
+    // information grows slowly with sample size, so the weight is its log: a 5,000 poll counts ~1.1x a 2,000 one
+    const w = Math.log(Math.max(n, 2)) * decay;
     raw.forEach((v, i) => (avg[i] += (w * v) / sum));
     weightSum += w;
-    nEff += w / opt.designEffect;
+    nEff += (Math.min(n, 5000) * decay) / opt.designEffect;
   }
   const mean = avg.map((v) => v / weightSum);
 

@@ -5,7 +5,7 @@ import type { WikiPoll } from './wikipedia.ts';
  *
  * 1. Each poll is converted to shares of the valid vote (candidates + others; blank/null/undecided
  *    are dropped, i.e. assumed to split like decided voters).
- * 2. Polls are averaged, weighted by sample size and recency (exponential decay).
+ * 2. Polls are averaged, weighted by the log of their sample size and by recency (exponential decay).
  * 3. The average is turned into a Dirichlet distribution whose concentration reflects the effective
  *    sample size, capped to account for non-sampling error (house effects, turnout, late swing),
  *    and widened the further away the election is.
@@ -23,9 +23,9 @@ export interface Intention {
 
 /**
  * Sampling error stops mattering long before a poll reaches 40,000 interviews (house effects and other
- * non-sampling error dominate), so a poll never counts for more than this many respondents.
+ * non-sampling error dominate), so for the uncertainty a poll never counts for more than this many respondents.
  */
-const MAX_WEIGHTED_SAMPLE = 5000;
+const MAX_EFFECTIVE_SAMPLE = 5000;
 
 export const ELECTION_DATE = '2026-10-04';
 
@@ -102,12 +102,13 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
   for (const p of usable) {
     const raw = [...names.map((n) => p.values[n] as number), p.others ?? 0];
     const total = raw.reduce((s, v) => s + v, 0);
-    const n = Math.min(p.sample ?? 1000, MAX_WEIGHTED_SAMPLE);
+    const n = p.sample ?? 1000;
     const decay = Math.pow(0.5, Math.max(0, daysBetween(p.end, opt.today)) / opt.halfLifeDays);
-    const w = n * decay;
+    // information grows slowly with sample size, so the weight is its log: a 5,000 poll counts ~1.1x a 2,000 one
+    const w = Math.log(Math.max(n, 2)) * decay;
     raw.forEach((v, i) => (avg[i] += (w * v) / total));
     weightSum += w;
-    nEff += w / opt.designEffect;
+    nEff += (Math.min(n, MAX_EFFECTIVE_SAMPLE) * decay) / opt.designEffect;
   }
   const mean = avg.map((v) => v / weightSum);
 

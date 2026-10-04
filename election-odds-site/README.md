@@ -24,14 +24,14 @@ Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1
   200k Dirichlet simulations with the Brazilian 50% rule (`src/odds.ts`, concentration cap 300). Rows come from **both** English and
   Portuguese Wikipedia: the English page is the base and Portuguese rows (`src/president-pt.ts`) are added only for polls the English
   page does not have (it is often about a day ahead and lists pollsters the English page omits). If the Portuguese page fails or
-  changes layout, the build falls back to English alone. A poll never weighs more than 5,000 respondents (`src/forecast.ts`).
+  changes layout, the build falls back to English alone. Polls are weighted by the log of their sample size times a 7-day recency half-life, so size matters only mildly (a 5,000-person poll counts about 1.1x a 2,000-person one).
 - **Governor** (`src/governor-odds.ts`): the same model fed with a state's governor polls from the pt.wikipedia table, scenario 1
   (the full ballot), that match a TSE registration; concentration cap 200 (state polls err more). The two candidates with the highest
   average are the "leaders". Any other runoff pairing above 1% is listed as text.
 - **Senate** (`src/senate-forecast.ts`, `src/senate-odds.ts`): only complete **two-vote** polls are used, because they measure what
   decides the race. A row summing to well over 100% is two-vote; Quaest and Datafolha are also two-vote but publish the consolidated
   total (1st and 2nd vote averaged, so rows sum to 100% or less), recognized by name (`CONSOLIDATED`); first-choice polls, polls missing candidates and polls with no TSE
-  registration are excluded. Polls become shares of all named votes, are averaged (sample size × recency) and simulated; the top two
+  registration are excluded. Polls become shares of all named votes, are averaged (log of sample size × recency) and simulated; the top two
   in each simulation win. Concentration cap 150.
 
 ## Adding or changing a state
