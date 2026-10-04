@@ -27,6 +27,9 @@ export interface Intention {
  */
 const MAX_EFFECTIVE_SAMPLE = 5000;
 
+/** a poll's weight halves every this many days (the election is close, so old polls fade fast) */
+export const HALF_LIFE_DAYS = 2.5;
+
 export const ELECTION_DATE = '2026-10-04';
 
 export interface ForecastOptions {
@@ -42,6 +45,8 @@ export interface ForecastOptions {
 
 export interface Forecast {
   pollsUsed: number;
+  /** how many equally weighted polls the weights are really worth: (sum w)^2 / sum w^2 */
+  effectivePolls: number;
   oldest: string;
   newest: string;
   concentration: number;
@@ -98,7 +103,7 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
 
   // 1–2. valid-vote shares, weighted average (last bucket = others)
   const avg = new Array<number>(names.length + 1).fill(0);
-  let weightSum = 0, nEff = 0;
+  let weightSum = 0, weightSq = 0, nEff = 0;
   for (const p of usable) {
     const raw = [...names.map((n) => p.values[n] as number), p.others ?? 0];
     const total = raw.reduce((s, v) => s + v, 0);
@@ -108,6 +113,7 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
     const w = Math.log(Math.max(n, 2)) * decay;
     raw.forEach((v, i) => (avg[i] += (w * v) / total));
     weightSum += w;
+    weightSq += w * w;
     nEff += (Math.min(n, MAX_EFFECTIVE_SAMPLE) * decay) / opt.designEffect;
   }
   const mean = avg.map((v) => v / weightSum);
@@ -147,6 +153,7 @@ export function forecast(polls: WikiPoll[], opt: ForecastOptions): Forecast {
   const dates = usable.map((p) => p.end).sort();
   return {
     pollsUsed: usable.length,
+    effectivePolls: (weightSum * weightSum) / weightSq,
     oldest: dates[0],
     newest: dates[dates.length - 1],
     concentration,

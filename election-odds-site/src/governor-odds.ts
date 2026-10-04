@@ -1,7 +1,7 @@
 import { fetchPolls } from './tse.ts';
 import { matchesPoll, type WikiPoll } from './wikipedia.ts';
 import { fetchStatePolls } from './senate-wikipedia.ts';
-import { ELECTION_DATE, forecast, type Intention } from './forecast.ts';
+import { ELECTION_DATE, forecast, type Intention, HALF_LIFE_DAYS } from './forecast.ts';
 import type { State } from './states.ts';
 
 // Same method as the presidential page (valid-vote average -> Dirichlet simulation -> 50% rule),
@@ -28,6 +28,8 @@ export interface GovernorOdds {
   simulations: number;
   pollsRequested: number;
   pollsUsed: number;
+  /** equally weighted polls the weights are worth */
+  effectivePolls: number;
   oldestPoll: string;
   newestPoll: string;
   /** the two candidates with the highest aggregated share */
@@ -82,7 +84,7 @@ export async function computeGovernorOdds(state: State): Promise<GovernorOdds> {
     sample: p.sample,
   }));
 
-  const f = forecast(polls, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: 7, designEffect: 2 });
+  const f = forecast(polls, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: HALF_LIFE_DAYS, designEffect: 2 });
 
   const win = new Map(f.firstRoundWin.map((c) => [c.name, c.p]));
   const [a, b] = f.shares;
@@ -96,6 +98,7 @@ export async function computeGovernorOdds(state: State): Promise<GovernorOdds> {
     simulations: SIMS,
     pollsRequested: POLLS,
     pollsUsed: f.pollsUsed,
+    effectivePolls: Math.round(f.effectivePolls * 10) / 10,
     oldestPoll: f.oldest,
     newestPoll: f.newest,
     leaders: [leader(a), leader(b)],

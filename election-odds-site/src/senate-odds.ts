@@ -2,7 +2,7 @@ import { fetchPolls } from './tse.ts';
 import { matchesPoll } from './wikipedia.ts';
 import { fetchStatePolls } from './senate-wikipedia.ts';
 import type { State } from './states.ts';
-import { ELECTION_DATE, type Intention } from './forecast.ts';
+import { ELECTION_DATE, type Intention, HALF_LIFE_DAYS } from './forecast.ts';
 import { forecastSenate, type SenateForecast } from './senate-forecast.ts';
 
 // Default model parameters. The concentration cap is lower than the presidential one (300):
@@ -18,6 +18,8 @@ export interface SenateOdds {
   seats: 2;
   simulations: number;
   pollsUsed: number;
+  /** equally weighted polls the weights are worth */
+  effectivePolls: number;
   pollsters: string[];
   excluded: { firstChoice: number; partial: number; unregistered: number };
   oldestPoll: string;
@@ -40,7 +42,7 @@ export async function computeSenateOdds(state: State): Promise<{ odds: SenateOdd
   const released = tsePolls.filter((t) => t.divulgacao <= today);
   const matched = wikiPolls.filter((w) => released.some((t) => matchesPoll(t, w)));
 
-  const f = forecastSenate(matched, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: 7, designEffect: 2 });
+  const f = forecastSenate(matched, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: HALF_LIFE_DAYS, designEffect: 2 });
   const share = new Map(f.shares.map((s) => [s.name, s.share]));
 
   return {
@@ -52,6 +54,7 @@ export async function computeSenateOdds(state: State): Promise<{ odds: SenateOdd
       seats: 2,
       simulations: SIMS,
       pollsUsed: f.pollsUsed,
+      effectivePolls: Math.round(f.effectivePolls * 10) / 10,
       pollsters: f.pollsters,
       excluded: { ...f.excluded, unregistered: wikiPolls.length - matched.length },
       oldestPoll: f.oldest,

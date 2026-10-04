@@ -1,7 +1,7 @@
 import { fetchPresidentialPolls } from './tse.ts';
 import { fetchWikipediaPolls, matchesPoll, samePollster, type WikiPoll } from './wikipedia.ts';
 import { fetchPresidentPtPolls } from './president-pt.ts';
-import { ELECTION_DATE, forecast, type Forecast, type Intention } from './forecast.ts';
+import { ELECTION_DATE, forecast, type Forecast, type Intention, HALF_LIFE_DAYS } from './forecast.ts';
 
 // Default model parameters (same defaults as the CLI's --forecast mode)
 const POLLS = 50;
@@ -15,6 +15,8 @@ export interface Odds {
   simulations: number;
   pollsRequested: number;
   pollsUsed: number;
+  /** equally weighted polls the weights are worth */
+  effectivePolls: number;
   oldestPoll: string;
   newestPoll: string;
   /** probability that each candidate wins outright (> 50% of valid votes) */
@@ -65,7 +67,7 @@ export async function computeOdds(): Promise<{ odds: Odds; forecast: Forecast }>
   }
   const matched = [...rows].sort((a, b) => b.end.localeCompare(a.end)).slice(0, POLLS);
 
-  const f = forecast(matched, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: 7, designEffect: 2 });
+  const f = forecast(matched, { today, sims: SIMS, seed: SEED, concentration: CONCENTRATION, halfLifeDays: HALF_LIFE_DAYS, designEffect: 2 });
 
   const names = f.shares.map((s) => s.name);
   const lula = find(names, 'Lula');
@@ -81,6 +83,7 @@ export async function computeOdds(): Promise<{ odds: Odds; forecast: Forecast }>
       simulations: SIMS,
       pollsRequested: POLLS,
       pollsUsed: f.pollsUsed,
+      effectivePolls: Math.round(f.effectivePolls * 10) / 10,
       oldestPoll: f.oldest,
       newestPoll: f.newest,
       firstRoundWin: { flavio: win(flavio), lula: win(lula) },

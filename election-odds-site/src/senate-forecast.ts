@@ -31,6 +31,8 @@ export interface SenateForecast {
   names: string[];
   parties: Record<string, string>;
   pollsUsed: number;
+  /** how many equally weighted polls the weights are really worth: (sum w)^2 / sum w^2 */
+  effectivePolls: number;
   excluded: { firstChoice: number; partial: number };
   pollsters: string[];
   oldest: string;
@@ -71,7 +73,7 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
 
   const k = names.length;
   const avg = new Array<number>(k + 1).fill(0);
-  let weightSum = 0, nEff = 0;
+  let weightSum = 0, weightSq = 0, nEff = 0;
   for (const p of usable) {
     const raw = [...names.map((n) => p.values[n] as number), p.others ?? 0];
     const sum = raw.reduce((s, v) => s + v, 0);
@@ -81,6 +83,7 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
     const w = Math.log(Math.max(n, 2)) * decay;
     raw.forEach((v, i) => (avg[i] += (w * v) / sum));
     weightSum += w;
+    weightSq += w * w;
     nEff += (Math.min(n, 5000) * decay) / opt.designEffect;
   }
   const mean = avg.map((v) => v / weightSum);
@@ -115,6 +118,7 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
     names,
     parties: polls[0].parties,
     pollsUsed: usable.length,
+    effectivePolls: (weightSum * weightSum) / weightSq,
     excluded: { firstChoice: polls.length - twoVote.length, partial: twoVote.length - usable.length },
     // Wikipedia spells some names two ways ("DataFolha" / "Datafolha")
     pollsters: [...new Map(usable.map((p) => [p.pollster.toLowerCase(), p.pollster])).values()],
