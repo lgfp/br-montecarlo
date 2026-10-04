@@ -24,7 +24,7 @@ Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1
   200k Dirichlet simulations with the Brazilian 50% rule (`src/odds.ts`, concentration cap 300). Rows come from **both** English and
   Portuguese Wikipedia: the English page is the base and Portuguese rows (`src/president-pt.ts`) are added only for polls the English
   page does not have (it is often about a day ahead and lists pollsters the English page omits). If the Portuguese page fails or
-  changes layout, the build falls back to English alone. Polls are weighted by the log of their sample size times a 2.5-day recency half-life, so size matters only mildly (a 5,000-person poll counts about 1.1x a 2,000-person one).
+  changes layout, the build falls back to English alone. Polls are weighted by the log of their sample size times a 4-day recency half-life, so size matters only mildly (a 5,000-person poll counts about 1.1x a 2,000-person one).
 - **Governor** (`src/governor-odds.ts`): the same model fed with a state's governor polls from the pt.wikipedia table, scenario 1
   (the full ballot), that match a TSE registration; concentration cap 200 (state polls err more). The two candidates with the highest
   average are the "leaders". Any other runoff pairing above 1% is listed as text.

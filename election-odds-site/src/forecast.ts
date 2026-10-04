@@ -28,7 +28,7 @@ export interface Intention {
 const MAX_EFFECTIVE_SAMPLE = 5000;
 
 /** a poll's weight halves every this many days (the election is close, so old polls fade fast) */
-export const HALF_LIFE_DAYS = 2.5;
+export const HALF_LIFE_DAYS = 4;
 
 export const ELECTION_DATE = '2026-10-04';
 
