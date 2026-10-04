@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import type { TsePoll } from './tse.ts';
+import { fetchRetry } from './http.ts';
 
 const API = 'https://en.wikipedia.org/w/api.php?action=parse&page=Opinion_polling_for_the_2026_Brazilian_presidential_election&prop=text&format=json&formatversion=2';
 const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
@@ -86,7 +87,7 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, roun
 }
 
 export async function fetchWikipediaPolls(): Promise<WikiPoll[]> {
-  const res = await fetch(API, { headers: { 'User-Agent': 'tse-results-cli/1.0 (poc)' } });
+  const res = await fetchRetry(API);
   if (!res.ok) throw new Error(`Wikipedia fetch failed: HTTP ${res.status}`);
   const { parse } = (await res.json()) as { parse: { text: string } };
   const $ = cheerio.load(parse.text);

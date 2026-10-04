@@ -4,8 +4,8 @@
   const ROOT = document.body.dataset.root || './';
   // outcomes under 1% are not shown
   const MIN = 0.01;
-  // at most this many candidates are shown, and only those above FACE_MIN get a portrait card
-  const MAX_SHOWN = 4;
+  // portrait cards: at most this many, and only for candidates above FACE_MIN
+  const MAX_CARDS = 4;
   const FACE_MIN = 0.10;
 
   const TSE = 'https://dadosabertos.tse.jus.br/dataset/pesquisas-eleitorais-2026';
@@ -72,12 +72,11 @@
   };
 
   Site.start(STRINGS, (lang, t, h) => {
-    // candidates arrive most likely first: keep the top few that are above 1%
-    const shown = ODDS.candidates.filter((c) => c.p >= MIN).slice(0, MAX_SHOWN);
-    // a portrait card needs both a portrait and a real chance; the rest of the shown candidates are listed as text
-    const withPortrait = shown.filter((c) => c.image && c.p > FACE_MIN);
-    const textOnly = shown.filter((c) => !withPortrait.includes(c));
-    const shownNames = new Set(shown.map((c) => c.name));
+    // candidates arrive most likely first. A portrait card needs a portrait and a real chance (top few only);
+    // everyone else above 1% is listed as text below
+    const likely = ODDS.candidates.filter((c) => c.p >= MIN);
+    const withPortrait = likely.filter((c) => c.image && c.p > FACE_MIN).slice(0, MAX_CARDS);
+    const textOnly = likely.filter((c) => !withPortrait.includes(c));
 
     const grid = document.getElementById('candidates');
     grid.replaceChildren(...withPortrait.map((c) => {
@@ -97,6 +96,6 @@
     document.getElementById('others-title').textContent = withPortrait.length ? t.othersTitle : t.othersTitleAlone;
     document.getElementById('others').replaceChildren(...textOnly.map((c) => row(c.party ? `${c.name} (${c.party})` : c.name, c.p, h)));
 
-    document.getElementById('pairs').replaceChildren(...ODDS.pairs.filter((x) => x.p >= MIN && shownNames.has(x.a) && shownNames.has(x.b)).map((x) => row(`${x.a} + ${x.b}`, x.p, h)));
+    document.getElementById('pairs').replaceChildren(...ODDS.pairs.filter((x) => x.p >= MIN).map((x) => row(`${x.a} + ${x.b}`, x.p, h)));
   }, ODDS.intention);
 })();

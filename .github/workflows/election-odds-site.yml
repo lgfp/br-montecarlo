@@ -34,6 +34,12 @@ jobs:
           cache: npm
           cache-dependency-path: election-odds-site/package-lock.json
       - run: npm ci
+      # last good TSE poll registry: the build falls back to it if the download fails (see src/tse.ts)
+      - uses: actions/cache@v6
+        with:
+          path: election-odds-site/.cache
+          key: tse-registry-${{ github.run_id }}
+          restore-keys: tse-registry-
       - run: npm run typecheck
       # fetches the TSE poll registry + Wikipedia tables, runs the forecast, writes dist/
       - run: npm run build

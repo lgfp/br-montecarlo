@@ -1,6 +1,11 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import unzipper from 'unzipper';
+import { fetchRetry } from './http.ts';
 
-const ZIP_URL = 'https://cdn.tse.jus.br/estatistica/sead/odsele/pesquisa_eleitoral/pesquisa_eleitoral_2026.zip';
+const ZIP_URL = process.env.TSE_ZIP_URL ?? 'https://cdn.tse.jus.br/estatistica/sead/odsele/pesquisa_eleitoral/pesquisa_eleitoral_2026.zip';
+// last good copy: CI restores this folder from its cache, so a failed download can fall back to it
+const CACHE_DIR = '.cache';
+const CACHE_FILE = `${CACHE_DIR}/tse-pesquisa-eleitoral-2026.zip`;
 
 export interface TsePoll {
   registro: string;
@@ -36,12 +41,25 @@ function parseCsv(text: string): string[][] {
 const day = (s: string) => s.slice(0, 10);
 
 let zip: Promise<unzipper.CentralDirectory> | undefined;
-const openZip = () =>
-  (zip ??= (async () => {
-    const res = await fetch(ZIP_URL);
+
+async function downloadZip(): Promise<Buffer> {
+  try {
+    const res = await fetchRetry(ZIP_URL);
     if (!res.ok) throw new Error(`TSE download failed: HTTP ${res.status}`);
-    return unzipper.Open.buffer(Buffer.from(await res.arrayBuffer()));
-  })());
+    const data = Buffer.from(await res.arrayBuffer());
+    await mkdir(CACHE_DIR, { recursive: true });
+    await writeFile(CACHE_FILE, data);
+    return data;
+  } catch (err) {
+    // the registry only gains new polls over time, so yesterday's copy is much better than no site update
+    const cached = await readFile(CACHE_FILE).catch(() => null);
+    if (!cached) throw err;
+    console.warn(`TSE download failed (${err instanceof Error ? err.message : err}); using the cached copy of the registry`);
+    return cached;
+  }
+}
+
+const openZip = () => (zip ??= downloadZip().then((data) => unzipper.Open.buffer(data)));
 
 /** scope: 'BRASIL' for national registrations, or a state code such as 'SC' */
 export async function fetchPolls({ scope, cargo, pollster = '' }: { scope: string; cargo: RegExp; pollster?: string }): Promise<TsePoll[]> {

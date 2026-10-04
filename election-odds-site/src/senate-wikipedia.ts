@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import { toGrid } from './wikipedia.ts';
+import { fetchRetry } from './http.ts';
 
 const api = (page: string) => `https://pt.wikipedia.org/w/api.php?action=parse&page=${page}&prop=text&format=json&formatversion=2&redirects=1`;
 const MONTHS: Record<string, number> = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
@@ -83,7 +84,7 @@ export const pageHtml = (page: string) => {
   let html = pages.get(page);
   if (!html) {
     html = (async () => {
-      const res = await fetch(api(page), { headers: { 'User-Agent': 'br-montecarlo/1.0 (https://github.com/lgfp/br-montecarlo)' } });
+      const res = await fetchRetry(api(page));
       if (!res.ok) throw new Error(`Wikipedia (pt) fetch failed: HTTP ${res.status} for ${page}`);
       return ((await res.json()) as { parse: { text: string } }).parse.text;
     })();
