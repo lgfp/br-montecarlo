@@ -71,7 +71,9 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, roun
   return grid.slice(headerRows).flatMap((row): WikiPoll[] => {
     const period = row[idx.period].text;
     const end = parseEndDate(period, year);
-    if (!end) return [];
+    const sample = number(row[idx.sample].text);
+    // the table also holds campaign timeline rows ("Last day of free electoral broadcast time"): no sample, not a poll
+    if (!end || sample === null) return [];
     return [{
       round,
       pollster: row[idx.pollster].text,
@@ -81,7 +83,7 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, roun
       others: idx.others === undefined ? null : number(row[idx.others].text),
       undecided: number(row[idx.blank].text),
       margin: row[idx.margin].text,
-      sample: number(row[idx.sample].text),
+      sample,
     }];
   });
 }
@@ -114,10 +116,17 @@ function sameDay(a: string, b: string, toleranceDays: number): boolean {
   return Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= toleranceDays * 86_400_000;
 }
 
+// Some pollsters register their polls with the TSE under a partner company: Futura's (and Apex's) national polls
+// are filed by "100% Cidades Participações", as the São Paulo table's own "Futura/100% Cidades" label shows.
+const REGISTERED_AS: Record<string, string> = { futura: '100% Cidades', apex: '100% Cidades' };
+
 // Wikipedia has no TSE registration number, so match on pollster + fieldwork end date.
 // Names like "Futura/Apex" or "PoderData/Aya" list co-signers: any one of them may be the registered name.
 export function matchesPoll(tsePoll: TsePoll, wikiPoll: Pick<WikiPoll, 'pollster' | 'end'>): boolean {
-  const alternatives = wikiPoll.pollster.split('/').map(tokens).filter((t) => t.length);
+  const alternatives = wikiPoll.pollster.split('/').flatMap((part) => {
+    const t = tokens(part);
+    return [t, ...t.flatMap((w) => (REGISTERED_AS[w] ? [tokens(REGISTERED_AS[w])] : []))];
+  }).filter((t) => t.length);
   const nameOk = tsePoll.names.some((n) => {
     const t = tokens(n);
     return alternatives.some((alt) => alt.every((w) => t.some((x) => x.startsWith(w))));
