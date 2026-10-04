@@ -52,12 +52,20 @@ const daysBetween = (a: string, b: string) => (new Date(b).getTime() - new Date(
 /** a two-vote poll cannot sum to more than 100% unless respondents named several candidates */
 const TWO_VOTE_SUM = 105;
 
+/**
+ * Pollsters that ask for two votes but publish the consolidated total ("resultado agregado": the first and second
+ * votes averaged, reduced so that candidates + undecided + blank = 100%). Their rows sum to 100% or less, so the
+ * sum test above would wrongly call them one-vote polls. Confirmed from G1's write-ups of the Quaest and Datafolha
+ * Senate polls, where the aggregate equals the mean of the "1º voto" and "2º voto" figures.
+ */
+const CONSOLIDATED = /quaest|datafolha/i;
+
 export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateForecast {
   if (!polls.length) throw new Error('No polls to aggregate.');
   const names = Object.keys(polls[0].values);
 
   const total = (p: SenatePoll) => Object.values(p.values).reduce<number>((s, v) => s + (v ?? 0), 0) + (p.others ?? 0);
-  const twoVote = polls.filter((p) => total(p) > TWO_VOTE_SUM);
+  const twoVote = polls.filter((p) => total(p) > TWO_VOTE_SUM || CONSOLIDATED.test(p.pollster));
   const usable = twoVote.filter((p) => names.every((n) => p.values[n] != null));
   if (!usable.length) throw new Error('No complete two-vote poll available.');
 
@@ -106,7 +114,8 @@ export function forecastSenate(polls: SenatePoll[], opt: SenateOptions): SenateF
     parties: polls[0].parties,
     pollsUsed: usable.length,
     excluded: { firstChoice: polls.length - twoVote.length, partial: twoVote.length - usable.length },
-    pollsters: [...new Set(usable.map((p) => p.pollster))],
+    // Wikipedia spells some names two ways ("DataFolha" / "Datafolha")
+    pollsters: [...new Map(usable.map((p) => [p.pollster.toLowerCase(), p.pollster])).values()],
     oldest: dates[0],
     newest: dates[dates.length - 1],
     concentration,

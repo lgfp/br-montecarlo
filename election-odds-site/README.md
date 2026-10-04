@@ -26,8 +26,9 @@ Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1
 - **Governor** (`src/governor-odds.ts`): the same model fed with a state's governor polls from the pt.wikipedia table, scenario 1
   (the full ballot), that match a TSE registration; concentration cap 200 (state polls err more). The two candidates with the highest
   average are the "leaders". Any other runoff pairing above 1% is listed as text.
-- **Senate** (`src/senate-forecast.ts`, `src/senate-odds.ts`): only complete **two-vote** polls are used (rows summing to well over
-  100%), because they measure what decides the race; first-choice polls, polls missing candidates and polls with no TSE
+- **Senate** (`src/senate-forecast.ts`, `src/senate-odds.ts`): only complete **two-vote** polls are used, because they measure what
+  decides the race. A row summing to well over 100% is two-vote; Quaest and Datafolha are also two-vote but publish the consolidated
+  total (1st and 2nd vote averaged, so rows sum to 100% or less), recognized by name (`CONSOLIDATED`); first-choice polls, polls missing candidates and polls with no TSE
   registration are excluded. Polls become shares of all named votes, are averaged (sample size × recency) and simulated; the top two
   in each simulation win. Concentration cap 150.
 
