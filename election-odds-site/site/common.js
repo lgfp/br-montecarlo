@@ -2,8 +2,8 @@
 (() => {
   const DEFAULT_LANG = 'pt-BR';
   const NAV = {
-    'pt-BR': { president: 'Presidente', 'rj-senate': 'RJ · Senado', 'rj-governor': 'RJ · Governo', 'sc-senate': 'SC · Senado', 'sc-governor': 'SC · Governo', pages: 'Páginas' },
-    en: { president: 'President', 'rj-senate': 'RJ · Senate', 'rj-governor': 'RJ · Governor', 'sc-senate': 'SC · Senate', 'sc-governor': 'SC · Governor', pages: 'Pages' },
+    'pt-BR': { president: 'Presidente', 'rj-senate': 'RJ · Senado', 'rj-governor': 'RJ · Governo', 'sc-senate': 'SC · Senado', 'sc-governor': 'SC · Governo', 'sp-senate': 'SP · Senado', 'sp-governor': 'SP · Governo', pages: 'Páginas' },
+    en: { president: 'President', 'rj-senate': 'RJ · Senate', 'rj-governor': 'RJ · Governor', 'sc-senate': 'SC · Senate', 'sc-governor': 'SC · Governor', 'sp-senate': 'SP · Senate', 'sp-governor': 'SP · Governor', pages: 'Pages' },
   };
 
   const INTENTION = {

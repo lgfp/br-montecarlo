@@ -51,14 +51,17 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, year
     undecided: col(/Indecisos/i),
   };
   const candidates = cols.filter((c) => c.candidate).map((c) => {
-    const m = grid[1][c.j].text.match(/^(.*?)\s*\(([^)]+)\)$/);
+    // "Name(PARTY)" or, on some pages, "Name PARTY"
+    const header = grid[1][c.j].text;
+    const m = header.match(/^(.*?)\s*\(([^)]+)\)$/) ?? header.match(/^(.*\S)\s+([A-ZÀ-Ý][A-ZÀ-Ý0-9]+)$/);
     return { j: c.j, name: m ? m[1] : grid[1][c.j].text, party: m ? m[2] : '' };
   });
 
   return grid.slice(headerRows).flatMap((row): SenatePoll[] => {
     const period = text(row[idx.period].text);
     const end = parseEndDate(period, year);
-    if (!end || num(row[idx.sample].text) === null) return [];
+    // a real poll row has a plain number as its sample ("1 600"); "28 Set ..." is a note that spans the table
+    if (!end || !/^\d{2,}$/.test(row[idx.sample].text.replace(/[\s\u00a0]/g, ''))) return [];
     return [{
       pollster: text(row[idx.pollster].text),
       period,
@@ -76,7 +79,7 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, year
 type Race = 'senate' | 'governor';
 
 /**
- * Campaign-period ("Agosto - Outubro") first-round governor table, or Senate table, of a state page such as
+ * Campaign-period first-round governor table, or Senate table, of a state page such as
  * "Pesquisas eleitorais para a eleição estadual de 2026 em Santa Catarina" (already URL-encoded in `page`).
  */
 const pages = new Map<string, Promise<string>>();
@@ -105,7 +108,7 @@ export async function fetchStatePolls(page: string, race: Race): Promise<SenateP
       const t = e.find('h2,h3,h4').first();
       if (t.prop('tagName') === 'H2') { h2 = text(t.text()); h4 = ''; }
       if (t.prop('tagName') === 'H4') h4 = text(t.text());
-    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && wantH2.test(h2) && /^Agosto/i.test(h4)) {
+    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && wantH2.test(h2) && /Outubro$/i.test(h4)) {
       polls.push(...parseTable($, e as cheerio.Cheerio<Element>, 2026));
     }
   });

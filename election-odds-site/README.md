@@ -9,6 +9,8 @@ Static site (pt-BR by default, EN toggle). Tabs are ordered president first (the
 | RJ · Governo | `/governo-rj/` | Rio governor: the two leaders' first-round win odds and the odds of a runoff between them |
 | SC · Senado | `/senado-sc/` | Same as RJ · Senado, for Santa Catarina |
 | SC · Governo | `/governo-sc/` | Same as RJ · Governo, for Santa Catarina |
+| SP · Senado | `/senado-sp/` | Same as RJ · Senado, for São Paulo |
+| SP · Governo | `/governo-sp/` | Same as RJ · Governo, for São Paulo |
 
 Every page ends its "Como funciona" section with an **aggregated vote intention** box: each candidate's poll average with a 95% margin
 (± percentage points) taken from the model's simulations, so it includes error beyond sampling and is wider than one poll's margin.
@@ -43,7 +45,7 @@ Optional, one file per candidate named after them: `site/img/<page>/<candidate-s
 `site/img/senado-sc/caroline-de-toni.webp`, `site/img/governo-rj/eduardo-paes.webp`. Transparent 782×926 works best.
 Without a file, a governor's card is shown without a portrait, and a Senate candidate is listed as text.
 Senate pages give a portrait card only to candidates above 10% (at most 4); every other candidate above 1% is listed as text.
-A governor page shows the leader alone (with the chance of a runoff) when the second candidate and the runoff are both under 1%, as on `/governo-sc/`.
+A governor page shows the leader alone (with the chance of a runoff) when the second candidate and the runoff are both under 1%, as on `/governo-sc/` and `/governo-sp/`.
 
 ## Run
 

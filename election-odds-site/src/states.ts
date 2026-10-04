@@ -14,12 +14,18 @@ export interface State {
 
 const wikiPage = (suffix: string) => `Pesquisas_eleitorais_para_a_elei%C3%A7%C3%A3o_estadual_de_2026_${suffix}`;
 
-export const STATES: Record<'SC' | 'RJ', State> = {
+export const STATES: Record<'SC' | 'RJ' | 'SP', State> = {
   SC: {
     uf: 'SC',
     name: 'Santa Catarina',
     place: { 'pt-BR': 'em Santa Catarina', en: 'in Santa Catarina' },
     wikiPage: wikiPage('em_Santa_Catarina'),
+  },
+  SP: {
+    uf: 'SP',
+    name: 'São Paulo',
+    place: { 'pt-BR': 'em São Paulo', en: 'in São Paulo' },
+    wikiPage: wikiPage('em_S%C3%A3o_Paulo'),
   },
   RJ: {
     uf: 'RJ',
