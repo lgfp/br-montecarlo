@@ -2,22 +2,24 @@
 (() => {
   const DEFAULT_LANG = 'pt-BR';
   const NAV = {
-    'pt-BR': { president: 'Presidente', 'rj-senate': 'RJ · Senado', 'rj-governor': 'RJ · Governo', 'sc-senate': 'SC · Senado', 'sc-governor': 'SC · Governo', 'sp-senate': 'SP · Senado', 'sp-governor': 'SP · Governo', pages: 'Páginas' },
-    en: { president: 'President', 'rj-senate': 'RJ · Senate', 'rj-governor': 'RJ · Governor', 'sc-senate': 'SC · Senate', 'sc-governor': 'SC · Governor', 'sp-senate': 'SP · Senate', 'sp-governor': 'SP · Governor', pages: 'Pages' },
+    'pt-BR': { president: 'Presidente', 'rj-governor': 'RJ · Governo', pages: 'Páginas' },
+    en: { president: 'President', 'rj-governor': 'RJ · Governor', pages: 'Pages' },
   };
 
   const INTENTION = {
     'pt-BR': {
-      title: 'Intenção de voto agregada',
+      title: 'Estimativa de votos no 2º turno',
       valid: 'Média das pesquisas, em % dos votos válidos. A margem é o intervalo de 95% do modelo (± pontos percentuais) e inclui erros além do amostral, por isso é maior que a de uma pesquisa isolada.',
       named: 'Média das pesquisas em que o eleitor cita dois nomes, em % dos votos citados (cada eleitor vota em dois). A margem é o intervalo de 95% do modelo (± pontos percentuais) e inclui erros além do amostral.',
+      twoWay: 'Estimativa do 2º turno (mistura do resultado do 1º turno com as pesquisas), em % dos votos dos dois finalistas. A margem é o intervalo de 95% do modelo (± pontos percentuais).',
       others: 'Outros',
       pp: 'p.p.',
     },
     en: {
-      title: 'Aggregated vote intention',
+      title: 'Runoff vote estimate',
       valid: 'Poll average, as % of valid votes. The margin is the model’s 95% interval (± percentage points) and includes errors beyond sampling, so it is wider than a single poll’s.',
       named: 'Average of polls where respondents name two candidates, as % of the votes named (each voter has two votes). The margin is the model’s 95% interval (± percentage points) and includes errors beyond sampling.',
+      twoWay: 'Runoff estimate (blend of the first-round result and the polls), as % of the two finalists’ votes. The margin is the model’s 95% interval (± percentage points).',
       others: 'Others',
       pp: 'pp',
     },

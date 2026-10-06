@@ -76,7 +76,7 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, year
   });
 }
 
-type Race = 'senate' | 'governor';
+type Race = 'senate' | 'governor' | 'governor-runoff';
 
 /**
  * Campaign-period first-round governor table, or Senate table, of a state page such as
@@ -96,19 +96,26 @@ export const pageHtml = (page: string) => {
   return html;
 };
 
-export async function fetchStatePolls(page: string, race: Race): Promise<SenatePoll[]> {
+/**
+ * `runoffPair` (governor-runoff only) picks the matchup's section by its h3, e.g. /Paes e Douglas Ruas/.
+ * Runoff tables carry the two candidates only, plus "Indecisos ou Absentos".
+ */
+export async function fetchStatePolls(page: string, race: Race, runoffPair?: RegExp): Promise<SenatePoll[]> {
   const $ = cheerio.load(await pageHtml(page));
-  const wantH2 = race === 'senate' ? /^Senador$/i : /^Primeiro Turno \(Governador\)/i;
+  const wantH2 = race === 'senate' ? /^Senador$/i : race === 'governor' ? /^Primeiro Turno \(Governador\)/i : /^Segundo Turno \(Governador\)/i;
+  const wantH3 = race === 'governor-runoff' ? runoffPair ?? /./ : /./;
+  const wantH4 = race === 'governor-runoff' ? /^2026$/ : /Outubro$/i;
 
   const polls: SenatePoll[] = [];
-  let h2 = '', h4 = '';
+  let h2 = '', h3 = '', h4 = '';
   $('.mw-parser-output').children().each((_, el) => {
     const e = $(el);
     if (e.hasClass('mw-heading')) {
       const t = e.find('h2,h3,h4').first();
-      if (t.prop('tagName') === 'H2') { h2 = text(t.text()); h4 = ''; }
+      if (t.prop('tagName') === 'H2') { h2 = text(t.text()); h3 = ''; h4 = ''; }
+      if (t.prop('tagName') === 'H3') { h3 = text(t.text()); h4 = ''; }
       if (t.prop('tagName') === 'H4') h4 = text(t.text());
-    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && wantH2.test(h2) && /Outubro$/i.test(h4)) {
+    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && wantH2.test(h2) && wantH3.test(h3) && wantH4.test(h4)) {
       polls.push(...parseTable($, e as cheerio.Cheerio<Element>, 2026));
     }
   });

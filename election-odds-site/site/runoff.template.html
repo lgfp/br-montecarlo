@@ -29,18 +29,18 @@
 
       <section class="stage" id="stage" aria-live="polite"></section>
 
-      <section class="pairs" id="others-section" hidden>
-        <h3 data-i18n="othersTitle"></h3>
-        <p class="hint" data-i18n="othersHint"></p>
-        <ul id="others"></ul>
-      </section>
-
       <section class="method">
         <h3 data-i18n="methodTitle"></h3>
         <p data-i18n="method"></p>
-        <p data-i18n="candidacy"></p>
+        <p data-i18n="components"></p>
+        <p data-i18n="adjustments"></p>
         <p data-i18n="caveat"></p>
         <div class="intention" id="intention"></div>
+        <details class="polls" id="polls">
+          <summary data-i18n="pollsTitle"></summary>
+          <p class="hint" id="polls-note"></p>
+          <div class="table-wrap"><table id="polls-table"></table></div>
+        </details>
         <p class="meta" data-i18n="meta"></p>
         <p class="meta" data-i18n-html="sources"></p>
       </section>
@@ -49,6 +49,6 @@
 
   <script type="application/json" id="odds">__ODDS_JSON__</script>
   <script src="__ROOT__common.js"></script>
-  <script src="__ROOT__governo.js"></script>
+  <script src="__ROOT__runoff.js"></script>
 </body>
 </html>

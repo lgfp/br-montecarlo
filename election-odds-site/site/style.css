@@ -292,3 +292,12 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .meter span { transition: none; }
 }
+
+/* ---- polls used (runoff pages) ---- */
+.polls { margin: 16px 0; }
+.polls summary { cursor: pointer; font-weight: 600; }
+.polls .hint { margin: 8px 0; }
+.table-wrap { overflow-x: auto; }
+.polls table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+.polls th, .polls td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line, rgba(0,0,0,.12)); white-space: nowrap; }
+.polls th.num, .polls td.num { text-align: right; font-variant-numeric: tabular-nums; }

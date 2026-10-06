@@ -1,51 +1,45 @@
 # Election odds site
 
-Static site (pt-BR by default, EN toggle). Tabs are ordered president first (the default page), then by state, then by office:
+Static site (pt-BR by default, EN toggle) with the **second-round odds** of the 2026 Brazilian election (runoff: 25 October 2026).
+The first round (4 October) is over, so the site now has two pages, president first (the default):
 
 | Tab | Path | What it shows |
 |---|---|---|
-| Presidente | `/` | Lula and Flávio Bolsonaro: first-round win odds, and the odds of a runoff between them |
-| RJ · Senado | `/senado-rj/` | Odds of each Rio de Janeiro Senate candidate winning one of the two seats |
-| RJ · Governo | `/governo-rj/` | Rio governor: the two leaders' first-round win odds and the odds of a runoff between them |
-| SC · Senado | `/senado-sc/` | Same as RJ · Senado, for Santa Catarina |
-| SC · Governo | `/governo-sc/` | Same as RJ · Governo, for Santa Catarina |
-| SP · Senado | `/senado-sp/` | Same as RJ · Senado, for São Paulo |
-| SP · Governo | `/governo-sp/` | Same as RJ · Governo, for São Paulo |
+| Presidente | `/` | Lula × Flávio Bolsonaro: chance of each winning the runoff |
+| RJ · Governo | `/governo-rj/` | Douglas Ruas × Eduardo Paes (Ruas got 49.27% of valid votes, short of the 50% needed): chance of each winning the runoff |
 
-Every page ends its "Como funciona" section with an **aggregated vote intention** box: each candidate's poll average with a 95% margin
-(± percentage points) taken from the model's simulations, so it includes error beyond sampling and is wider than one poll's margin.
-President and governors show % of valid votes; Senate pages show % of the votes named (two votes per voter).
+Each page ends with a "Como funciona" section: method, the first-round and poll components, the pollster adjustments, a runoff vote
+estimate with its 95% margin, and a collapsible table of every poll used with its raw value, adjustment and weight.
+Probabilities under 1% are shown as "<1%", above 99% as ">99%". Everything is computed at build time.
 
-Everything is computed at build time. Outcomes under 1% are hidden (shown as "<1%" in the main boxes), and above 99% is shown as ">99%".
+## Model (`src/runoff.ts`)
 
-## Models
+1. **First-round result**: each finalist's share of the two finalists' combined votes (official counts, hard-coded).
+2. **Pre-election runoff polls**: TSE-registered polls with a Wikipedia row, fieldwork ending in the 14 days before the first round,
+   as each candidate's share of the two's votes (undecided dropped), adjusted for pollster bias, then averaged with weight
+   log(sample size) × 0.5^(age / 4 days).
+3. **Blend**: 80% first-round result, 20% polls (`ELECTION_WEIGHT`).
+4. **Odds**: the finalists' runoff share is normal around the blend with a standard deviation of 2.0 points (`SD_POINTS`: ~1.6 for
+   where the eliminated candidates' ~8% of the vote goes, ~1.2 for turnout).
 
-- **President** (same as the CLI's `--forecast`): last 50 TSE-registered polls with a Wikipedia row → weighted valid-vote average →
-  200k Dirichlet simulations with the Brazilian 50% rule (`src/odds.ts`, concentration cap 300). Rows come from **both** English and
-  Portuguese Wikipedia: the English page is the base and Portuguese rows (`src/president-pt.ts`) are added only for polls the English
-  page does not have (it is often about a day ahead and lists pollsters the English page omits). If the Portuguese page fails or
-  changes layout, the build falls back to English alone. Polls are weighted by the log of their sample size times a 4-day recency half-life, so size matters only mildly (a 5,000-person poll counts about 1.1x a 2,000-person one).
-- **Governor** (`src/governor-odds.ts`): the same model fed with a state's governor polls from the pt.wikipedia table, scenario 1
-  (the full ballot), that match a TSE registration; concentration cap 200 (state polls err more). The two candidates with the highest
-  average are the "leaders". Any other runoff pairing above 1% is listed as text.
-- **Senate** (`src/senate-forecast.ts`, `src/senate-odds.ts`): only complete **two-vote** polls are used, because they measure what
-  decides the race. A row summing to well over 100% is two-vote; Quaest and Datafolha are also two-vote but publish the consolidated
-  total (1st and 2nd vote averaged, so rows sum to 100% or less), recognized by name (`CONSOLIDATED`); first-choice polls, polls missing candidates and polls with no TSE
-  registration are excluded. Polls become shares of all named votes, are averaged (log of sample size × recency) and simulated; the top two
-  in each simulation win. Concentration cap 150.
+Polls with fieldwork after the first round are **post-election polls**: they enter the same average without the pre-election
+adjustments and the build prints a warning, because the 80/20 blend should be revisited once they arrive.
 
-## Adding or changing a state
+### Pollster adjustments
 
-`src/states.ts` lists the states (pt.wikipedia poll page, place name, optional note such as a candidacy under appeal). Page order
-and labels are in `TABS` in `src/build.ts` and `NAV` in `site/common.js`.
+- **President**: only Datafolha, Quaest, AtlasIntel, Palver, Futura, Veritá, PoderData, Gerp and Vox count (institutes that published in
+  October with a campaign track record; Nexus and the rest are out). From each institute's final first-round poll against the result
+  (`src/bias.ts` reproduces this): Lula's share was overstated by Datafolha (+0.5), Quaest (+0.8), AtlasIntel (+1.8) and understated by
+  Palver (−1.7) and Futura (−2.5). Adjustments, in points of two-way share moved between the candidates, are about half the measured miss
+  (Datafolha −0.7 for Lula, also reflecting its history, Quaest −0.5, AtlasIntel −1.0, Palver +1.0, Futura +1.5). Others: none.
+- **Rio**: every pre-election runoff poll moves 10 points from Paes to Ruas (`RIO_RUAS_BOOST`); the first-round polls missed the Ruas–Paes gap
+  by roughly that much in two-way terms. The first-round result and any post-election poll get no such shift.
+- `src/corrections.ts` holds hand-checked fixes to incomplete Wikipedia rows (e.g. Veritá's Oct 2 poll, others = 8%).
 
 ## Portraits
 
-Optional, one file per candidate named after them: `site/img/<page>/<candidate-slug>.webp` (or `.png`/`.jpg`), e.g.
-`site/img/senado-sc/caroline-de-toni.webp`, `site/img/governo-rj/eduardo-paes.webp`. Transparent 782×926 works best.
-Without a file, a governor's card is shown without a portrait, and a Senate candidate is listed as text.
-Senate pages give a portrait card only to candidates above 10% (at most 4); every other candidate above 1% is listed as text.
-A governor page shows the leader alone (with the chance of a runoff) when the second candidate and the runoff are both under 1%, as on `/governo-sc/` and `/governo-sp/`.
+Optional, one file per candidate: `site/img/lula.webp`, `site/img/flavio.webp`, `site/img/governo-rj/<candidate-slug>.webp`
+(`.png`/`.jpg` also work). Transparent 782×926 works best.
 
 ## Run
 
@@ -53,9 +47,10 @@ A governor page shows the leader alone (with the chance of a runoff) when the se
 npm ci
 npm run build      # fetches live data, writes dist/
 npm run serve      # preview dist/ locally
+npx tsx src/bias.ts   # pollster bias against the first-round result
 ```
 
-- `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts` for any pt.wikipedia state table), models, `states.ts`, `build.ts`
-- `site/` – page templates (`index`, `governo`, `senado`), styles, scripts (`common.js` shared), portraits
-- Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt every hour).
+- `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts` for pt.wikipedia state tables), `runoff.ts` (model), `states.ts`, `build.ts`
+- `site/` – page template (`runoff.template.html`), styles, scripts (`common.js` shared, `runoff.js`), portraits
+- Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt once a day).
   In the repo settings, set **Pages → Source** to **GitHub Actions**.

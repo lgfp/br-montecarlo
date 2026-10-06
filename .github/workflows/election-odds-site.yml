@@ -6,9 +6,9 @@ on:
     paths:
       - 'election-odds-site/**'
       - '.github/workflows/election-odds-site.yml'
-  # polls change daily: rebuild every hour, at minute 17 UTC (scheduled runs use the default branch)
+  # rebuild once a day, at 09:17 UTC (06:17 in Brasília; scheduled runs use the default branch)
   schedule:
-    - cron: '17 * * * *'
+    - cron: '17 9 * * *'
   workflow_dispatch:
 
 permissions:
