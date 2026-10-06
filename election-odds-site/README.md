@@ -56,6 +56,12 @@ adjustments and the build prints a warning, because the 80/20 blend should be re
 - **Other states**: no adjustment; no bias was measured there.
 - `src/corrections.ts` holds hand-checked fixes to incomplete Wikipedia rows (e.g. Veritá's Oct 2 poll, others = 8%).
 
+## Sharing
+
+Each page has a share row (WhatsApp, X, copy link) and Open Graph / Twitter card tags. The preview image is a 1200×630 card generated at
+build time (`src/og.ts`, with `sharp`): both candidates, portraits when available, and the live odds, saved as `dist/og/<page>.png`.
+The public address (`SITE` in `src/build.ts`) is used for canonical and absolute URLs.
+
 ## Portraits
 
 Optional, one file per candidate: `site/img/lula.webp`, `site/img/flavio.webp`, `site/img/governo-<uf>/<candidate-slug>.webp`

@@ -2,6 +2,10 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { computePresidentRunoff, computeStateRunoff, RIO_RUAS_BOOST, type RunoffOdds } from './runoff.ts';
 import { STATES, wikiUrl } from './states.ts';
+import { renderCard } from './og.ts';
+
+// the public address: canonical links and the absolute URLs social networks need for previews
+const SITE = 'https://cinquentamaisum.com';
 
 const pct = (p: number) => (p < 0.01 ? '<1%' : p > 0.99 ? '>99%' : `${(p * 100).toFixed(p < 0.1 ? 1 : 0).replace('.', ',')}%`);
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c'); // keeps the JSON inert inside <script>
@@ -104,16 +108,31 @@ for (const pg of pages) {
     page: {
       kind: pg.kind, office: pg.office, shortTitle: pg.shortTitle, adjustments: pg.adjustments, warning: pg.warning, wikiUrl: pg.wikiUrl,
       candidates: pg.candidates.map((c) => ({ name: c.name, party: c.party, slug: slug(c.name), image: image(pg.dir, c.name, c.flat) })),
+      url: `${SITE}/${pg.dir ? `${pg.dir}/` : ''}`,
     },
   };
   const out = pg.dir ? `dist/${pg.dir}` : 'dist';
   await mkdir(out, { recursive: true });
   await writeFile(`${out}/data.json`, JSON.stringify(data, null, 2) + '\n');
+  const url = `${SITE}/${pg.dir ? `${pg.dir}/` : ''}`;
+  const ogName = pg.dir || 'presidente';
+  const [ia, ib] = data.page.candidates;
+  const ogTitle = `${pg.shortTitle['pt-BR']} · 2º turno: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)}`;
+  await mkdir('dist/og', { recursive: true });
+  await writeFile(`dist/og/${ogName}.png`, await renderCard({
+    eyebrow: `${pg.office['pt-BR']} · 2º turno: 25 de outubro`,
+    title: 'Quem vence o 2º turno?',
+    candidates: [{ name: a.name, party: a.party, pct: pct(o.p.a), image: ia.image }, { name: b.name, party: b.party, pct: pct(o.p.b), image: ib.image }],
+    site: 'cinquentamaisum.com',
+  }, 'site'));
   await writeFile(`${out}/index.html`, template
     .replaceAll('__ROOT__', pg.dir ? '../' : './')
     .replace('__NAV__', nav(pg.tab))
     .replace('__TITLE__', `Chances no 2º turno · ${pg.shortTitle['pt-BR']}`)
-    .replace('__DESCRIPTION__', pg.description)
+    .replaceAll('__DESCRIPTION__', pg.description)
+    .replaceAll('__URL__', url)
+    .replaceAll('__OG_TITLE__', ogTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'))
+    .replaceAll('__OG_IMAGE__', `${SITE}/og/${ogName}.png`)
     .replace('__ODDS_JSON__', json(data))
     .replace('__NOSCRIPT__', `Vence o 2º turno: ${a.name} ${pct(o.p.a)} · ${b.name} ${pct(o.p.b)}`));
   console.log(`${pg.shortTitle['pt-BR']}: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)} (blend ${(o.blend.a * 100).toFixed(1)}/${(o.blend.b * 100).toFixed(1)}, ${o.pollsUsed} polls, ${o.effectivePolls} effective)`);
