@@ -29,7 +29,9 @@ Everything is computed at build time.
 
 ## Model (`src/runoff.ts`)
 
-1. **First-round result**: each finalist's share of the two finalists' combined votes.
+1. **First-round result**: each finalist's valid-vote share, with the eliminated candidates' voters split **evenly** between the two
+   (A's share = 50 + (A − B)/2). Splitting them in proportion to the finalists' own votes would flatter the front-runner, since those voters
+   did not pick her; this matters most in scattered fields (Amazonas, Acre, Espírito Santo).
 2. **Pre-election runoff polls**: fieldwork ending in the 14 days before the first round, as each candidate's share of the two's votes
    (undecided dropped), adjusted for pollster bias, then averaged with weight log(sample size) × 0.5^(age / 4 days).
 3. **Blend**: 80% first-round result, 20% polls (`ELECTION_WEIGHT`).

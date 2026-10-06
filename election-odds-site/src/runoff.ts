@@ -8,7 +8,7 @@ import type { State } from './states.ts';
 /**
  * Second-round odds for a two-candidate runoff, built from two ingredients:
  *
- *  1. the first-round result, restricted to the two finalists (each one's share of their combined votes);
+ *  1. the first-round result: each finalist's valid-vote share, with the eliminated candidates' voters split evenly;
  *  2. runoff polls taken before the first round, converted to the same two-way shares, adjusted for
  *     institute bias (see the adjustments below) and averaged (log of sample size x recency).
  *
@@ -91,8 +91,8 @@ export interface RunoffOdds {
   pollsFound: number;
   pollsReliable: boolean;
   sdPoints: number;
-  /** each finalist's first-round share, of all valid votes and of the two finalists' votes only */
-  firstRound: { a: { valid: number; twoWay: number }; b: { valid: number; twoWay: number } };
+  /** each finalist's first-round share of all valid votes, and the share of the runoff vote that implies if the eliminated voters split evenly */
+  firstRound: { a: { valid: number; evenSplit: number }; b: { valid: number; evenSplit: number } };
   pollsUsed: number;
   effectivePolls: number;
   oldestPoll: string | null;
@@ -129,8 +129,11 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
   const wSum = rows.reduce((s, r) => s + r.weight, 0);
   const pollA = rows.length ? rows.reduce((s, r) => s + r.weight * r.adjusted, 0) / wSum : null;
 
-  const totalTwo = votes.a + votes.b;
-  const electA = (100 * votes.a) / totalTwo;
+  // The eliminated candidates' voters are assumed to split evenly between the finalists, so A's share of the two-way vote
+  // is 50 + (A's valid-vote share - B's) / 2. (Splitting them in proportion to the finalists' own votes would flatter the
+  // front-runner: those voters have already shown they did not pick her.)
+  const validA = (100 * votes.a) / validVotes, validB = (100 * votes.b) / validVotes;
+  const electA = 50 + (validA - validB) / 2;
   const weight = pollA === null ? 1 : ELECTION_WEIGHT;
   const blendA = weight * electA + (1 - weight) * (pollA ?? 0);
   const eliminated = 100 - (100 * (votes.a + votes.b)) / validVotes;
@@ -146,8 +149,8 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
     pollsReliable: reliable,
     sdPoints: Math.round(sd * 10) / 10,
     firstRound: {
-      a: { valid: votes.a / validVotes, twoWay: electA / 100 },
-      b: { valid: votes.b / validVotes, twoWay: 1 - electA / 100 },
+      a: { valid: votes.a / validVotes, evenSplit: electA / 100 },
+      b: { valid: votes.b / validVotes, evenSplit: 1 - electA / 100 },
     },
     pollsUsed: rows.length,
     effectivePolls: rows.length ? Math.round(((wSum * wSum) / rows.reduce((s, r) => s + r.weight ** 2, 0)) * 10) / 10 : 0,
