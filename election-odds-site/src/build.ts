@@ -1,16 +1,17 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { computePresidentRunoff, computeRioRunoff, RIO_RUAS_BOOST, type RunoffOdds } from './runoff.ts';
+import { computePresidentRunoff, computeStateRunoff, RIO_RUAS_BOOST, type RunoffOdds } from './runoff.ts';
 import { STATES, wikiUrl } from './states.ts';
 
 const pct = (p: number) => (p < 0.01 ? '<1%' : p > 0.99 ? '>99%' : `${(p * 100).toFixed(p < 0.1 ? 1 : 0).replace('.', ',')}%`);
 const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c'); // keeps the JSON inert inside <script>
 const slug = (name: string) => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-// Tabs: president first (and default), then Rio governor. `key` also names the labels in common.js.
+// Tabs: president first (and default), then the governor runoffs by state. `key` also names the labels in common.js.
+const UFS = Object.keys(STATES) as (keyof typeof STATES)[];
 const TABS = [
   { key: 'president', dir: '', label: 'Presidente' },
-  { key: 'rj-governor', dir: 'governo-rj', label: 'RJ · Governo' },
+  ...UFS.map((uf) => ({ key: `${uf.toLowerCase()}-governor`, dir: `governo-${uf.toLowerCase()}`, label: uf })),
 ];
 // every page but the president lives one folder down, so its links start with "../"
 const nav = (current: string) => {
@@ -19,7 +20,10 @@ const nav = (current: string) => {
   return `<nav class="tabs" aria-label="Páginas">\n${links.join('\n')}\n    </nav>`;
 };
 
-const [president, rio] = await Promise.all([computePresidentRunoff(), computeRioRunoff()]);
+const president = await computePresidentRunoff();
+// one state at a time: each one reads a Wikipedia page, and Wikipedia rate-limits bursts
+const stateOdds = new Map<keyof typeof STATES, RunoffOdds>();
+for (const uf of UFS) stateOdds.set(uf, await computeStateRunoff(STATES[uf]));
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
@@ -36,12 +40,13 @@ const image = (dir: string, name: string, flat?: string) =>
 interface Page {
   tab: string;
   dir: string;
-  kind: 'president' | 'rio';
+  kind: 'president' | 'state';
   odds: RunoffOdds;
-  candidates: [{ name: string; party: string; flat?: string }, { name: string; party: string; flat?: string }];
+  candidates: { name: string; party: string; flat?: string }[];
   office: { 'pt-BR': string; en: string };
   shortTitle: { 'pt-BR': string; en: string };
   adjustments: { 'pt-BR': string; en: string };
+  warning: { 'pt-BR': string; en: string } | null;
   description: string;
   wikiUrl: string;
 }
@@ -56,21 +61,39 @@ const pages: Page[] = [
       'pt-BR': 'Entram só os institutos que seguiram publicando em outubro e têm histórico na campanha (Datafolha, Quaest, AtlasIntel, Palver, Futura, Veritá, PoderData, Gerp e Vox). Comparando a última pesquisa de cada um com o resultado do 1º turno, a parcela de Lula foi superestimada por Datafolha, Quaest e AtlasIntel e subestimada por Palver e Futura, então os ajustes são: Datafolha −0,7 ponto para Lula, Quaest −0,5, AtlasIntel −1,0, Palver +1,0 e Futura +1,5 (cerca de metade do erro medido, porque o erro de uma só pesquisa é em boa parte ruído). Os demais não recebem ajuste.',
       en: 'Only pollsters that kept publishing in October and have a track record over the campaign count (Datafolha, Quaest, AtlasIntel, Palver, Futura, Veritá, PoderData, Gerp and Vox). Comparing each one’s last poll with the first-round result, Lula’s share was overstated by Datafolha, Quaest and AtlasIntel and understated by Palver and Futura, so the adjustments are: Datafolha −0.7 points for Lula, Quaest −0.5, AtlasIntel −1.0, Palver +1.0 and Futura +1.5 (about half the measured error, since one poll’s error is largely noise). The others get no adjustment.',
     },
+    warning: null,
     description: 'Probabilidade de Lula e de Flávio Bolsonaro vencerem o segundo turno de 25 de outubro, combinando o resultado do 1º turno com as pesquisas de 2º turno.',
     wikiUrl: 'https://en.wikipedia.org/wiki/Opinion_polling_for_the_2026_Brazilian_presidential_election',
   },
-  {
-    tab: 'rj-governor', dir: 'governo-rj', kind: 'rio', odds: rio,
-    candidates: [{ name: 'Douglas Ruas', party: 'PL' }, { name: 'Eduardo Paes', party: 'PSD' }],
-    office: { 'pt-BR': 'Governo do Rio de Janeiro', en: 'Rio de Janeiro governor' },
-    shortTitle: { 'pt-BR': 'Governo RJ', en: 'Rio governor' },
-    adjustments: {
-      'pt-BR': `As pesquisas de 2º turno do Rio anteriores à eleição subestimaram Douglas Ruas por uma margem grande: no 1º turno, as pesquisas erraram o placar entre ele e Paes em cerca de 10 pontos, em todos os institutos. Por isso, só nessas pesquisas, ${RIO_RUAS_BOOST} pontos passam de Paes para Ruas. O resultado do 1º turno não recebe esse ajuste, e pesquisas feitas depois da eleição também não.`,
-      en: `Rio’s runoff polls from before the election understated Douglas Ruas by a wide margin: in the first round the polls missed the gap between him and Paes by about 10 points, at every pollster. So, in these polls only, ${RIO_RUAS_BOOST} points are moved from Paes to Ruas. The first-round result gets no such adjustment, and neither do polls taken after the election.`,
-    },
-    description: 'Probabilidade de Douglas Ruas e de Eduardo Paes vencerem o segundo turno de 25 de outubro no governo do Rio de Janeiro.',
-    wikiUrl: wikiUrl(STATES.RJ),
-  },
+  ...UFS.map((uf): Page => {
+    const state = STATES[uf];
+    const odds = stateOdds.get(uf)!;
+    const [a, b] = odds.intention.rows;
+    const rio = uf === 'RJ';
+    return {
+      tab: `${uf.toLowerCase()}-governor`, dir: `governo-${uf.toLowerCase()}`, kind: 'state', odds,
+      candidates: [{ name: a.name, party: a.party }, { name: b.name, party: b.party }],
+      office: { 'pt-BR': `Governo · ${state.name}`, en: `${state.name} · Governor` },
+      shortTitle: { 'pt-BR': `Governo ${uf}`, en: `${uf} governor` },
+      adjustments: rio
+        ? {
+          'pt-BR': `As pesquisas de 2º turno do Rio anteriores à eleição subestimaram Douglas Ruas por uma margem grande: no 1º turno, as pesquisas erraram o placar entre ele e Paes em cerca de 10 pontos, em todos os institutos. Por isso, só nessas pesquisas, ${RIO_RUAS_BOOST} pontos passam de Paes para Ruas. O resultado do 1º turno não recebe esse ajuste, e pesquisas feitas depois da eleição também não.`,
+          en: `Rio’s runoff polls from before the election understated Douglas Ruas by a wide margin: in the first round the polls missed the gap between him and Paes by about 10 points, at every pollster. So, in these polls only, ${RIO_RUAS_BOOST} points are moved from Paes to Ruas. The first-round result gets no such adjustment, and neither do polls taken after the election.`,
+        }
+        : {
+          'pt-BR': 'Não há ajuste de viés de instituto neste estado: as pesquisas de 2º turno entram como foram publicadas. Só pesquisas de 2º turno (os dois finalistas frente a frente) são usadas, nunca pesquisas do 1º turno com vários candidatos.',
+          en: 'No pollster-bias adjustment is applied in this state: runoff polls enter as published. Only runoff polls (the two finalists head to head) are used, never first-round polls with many candidates.',
+        },
+      warning: odds.pollsReliable
+        ? null
+        : {
+          'pt-BR': `Aviso: não há pesquisas de 2º turno suficientes e confiáveis para este estado (encontramos ${odds.pollsFound}; exigimos pelo menos 3, de 2 institutos, nas duas semanas antes do 1º turno). A estimativa usa só o resultado do 1º turno.`,
+          en: `Warning: there are not enough reliable runoff polls for this state (we found ${odds.pollsFound}; we require at least 3, from 2 pollsters, in the two weeks before the first round). The estimate uses the first-round result alone.`,
+        },
+      description: `Probabilidade de ${a.name} e de ${b.name} vencerem o segundo turno de 25 de outubro no governo de ${state.name}.`,
+      wikiUrl: wikiUrl(state),
+    };
+  }),
 ];
 
 for (const pg of pages) {
@@ -79,7 +102,7 @@ for (const pg of pages) {
   const data = {
     ...o,
     page: {
-      kind: pg.kind, office: pg.office, shortTitle: pg.shortTitle, adjustments: pg.adjustments, wikiUrl: pg.wikiUrl,
+      kind: pg.kind, office: pg.office, shortTitle: pg.shortTitle, adjustments: pg.adjustments, warning: pg.warning, wikiUrl: pg.wikiUrl,
       candidates: pg.candidates.map((c) => ({ name: c.name, party: c.party, slug: slug(c.name), image: image(pg.dir, c.name, c.flat) })),
     },
   };

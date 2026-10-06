@@ -23,9 +23,10 @@ export interface SenatePoll {
 
 const text = (s: string) => s.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
 
-// "30 Set", "24 – 26 Set", "30 Ago – 2 Set" -> ISO end date
+// "30 Set", "24 – 26 Set", "30 Ago – 2 Set", "20 a 23 de setembro", "28 de setembro e 1 de outubro" -> ISO end date
 function parseEndDate(period: string, year: number): string | null {
-  const m = period.match(/(\d{1,2})\s+([A-Za-zçÇ]+)\s*$/);
+  const parts = [...period.matchAll(/(\d{1,2})\s+(?:de\s+)?([A-Za-zçÇ]+)/g)];
+  const m = parts[parts.length - 1];
   const month = m && MONTHS[m[2].toLowerCase().slice(0, 3)];
   if (!m || !month) return null;
   return `${year}-${String(month).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
@@ -58,6 +59,8 @@ function parseTable($: cheerio.CheerioAPI, table: cheerio.Cheerio<Element>, year
   });
 
   return grid.slice(headerRows).flatMap((row): SenatePoll[] => {
+    // note rows that span the table have fewer cells
+    if (!row[idx.period] || !row[idx.sample] || candidates.some((c) => !row[c.j])) return [];
     const period = text(row[idx.period].text);
     const end = parseEndDate(period, year);
     // a real poll row has a plain number as its sample ("1 600"); "28 Set ..." is a note that spans the table
@@ -97,14 +100,15 @@ export const pageHtml = (page: string) => {
 };
 
 /**
- * `runoffPair` (governor-runoff only) picks the matchup's section by its h3, e.g. /Paes e Douglas Ruas/.
+ * `runoffPair` (governor-runoff only) picks the matchup's section by its h3, e.g. "Eduardo Paes e Douglas Ruas".
  * Runoff tables carry the two candidates only, plus "Indecisos ou Absentos".
  */
-export async function fetchStatePolls(page: string, race: Race, runoffPair?: RegExp): Promise<SenatePoll[]> {
+export async function fetchStatePolls(page: string, race: Race, runoffPair?: (h3: string) => boolean): Promise<SenatePoll[]> {
   const $ = cheerio.load(await pageHtml(page));
   const wantH2 = race === 'senate' ? /^Senador$/i : race === 'governor' ? /^Primeiro Turno \(Governador\)/i : /^Segundo Turno \(Governador\)/i;
-  const wantH3 = race === 'governor-runoff' ? runoffPair ?? /./ : /./;
-  const wantH4 = race === 'governor-runoff' ? /^2026$/ : /Outubro$/i;
+  const wantH3 = { test: (h: string) => (race === 'governor-runoff' && runoffPair ? runoffPair(h) : true) };
+  // first-round pages group by month ("Agosto - Outubro"); runoff pages put the table under the matchup, with or without a "2026" sub-heading
+  const wantH4 = { test: (h: string) => (race === 'governor-runoff' ? /^(2026)?$/.test(h) : /Outubro$/i.test(h)) };
 
   const polls: SenatePoll[] = [];
   let h2 = '', h3 = '', h4 = '';
@@ -119,7 +123,7 @@ export async function fetchStatePolls(page: string, race: Race, runoffPair?: Reg
       polls.push(...parseTable($, e as cheerio.Cheerio<Element>, 2026));
     }
   });
-  if (!polls.length) throw new Error(`No ${race} polls parsed from pt.wikipedia page ${page} (page layout changed?)`);
+  if (!polls.length && race !== 'governor-runoff') throw new Error(`No ${race} polls parsed from pt.wikipedia page ${page} (page layout changed?)`);
   return polls;
 }
 

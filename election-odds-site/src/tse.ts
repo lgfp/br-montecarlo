@@ -64,13 +64,16 @@ const openZip = () => (zip ??= downloadZip().then((data) => unzipper.Open.buffer
 /** scope: 'BRASIL' for national registrations, or a state code such as 'SC' */
 export async function fetchPolls({ scope, cargo, pollster = '' }: { scope: string; cargo: RegExp; pollster?: string }): Promise<TsePoll[]> {
   const dir = await openZip();
-  const entry = dir.files.find((f) => f.path.endsWith(`_${scope}.csv`));
+  // some states (the Distrito Federal, in 2026) have no file of their own: their registrations are in the BRASIL file
+  const own = dir.files.find((f) => f.path.endsWith(`_${scope}.csv`));
+  const entry = own ?? dir.files.find((f) => f.path.endsWith('_BRASIL.csv'));
   if (!entry) throw new Error(`TSE zip has no *_${scope}.csv entry`);
   const [header, ...data] = parseCsv((await entry.buffer()).toString('latin1'));
 
   return data
     .filter((r) => r.length === header.length)
     .map((r) => Object.fromEntries(header.map((h, i) => [h, r[i]])) as Record<string, string>)
+    .filter((p) => own || scope === 'BRASIL' || p.SG_UF === scope)
     .filter((p) => cargo.test(p.DS_CARGO))
     .filter((p) => p.NM_EMPRESA.toLowerCase().includes(pollster.toLowerCase()))
     .sort((a, b) => b.DT_DIVULGACAO.localeCompare(a.DT_DIVULGACAO))

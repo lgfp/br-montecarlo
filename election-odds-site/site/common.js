@@ -2,9 +2,12 @@
 (() => {
   const DEFAULT_LANG = 'pt-BR';
   const NAV = {
-    'pt-BR': { president: 'Presidente', 'rj-governor': 'RJ · Governo', pages: 'Páginas' },
-    en: { president: 'President', 'rj-governor': 'RJ · Governor', pages: 'Pages' },
+    'pt-BR': { president: 'Presidente', pages: 'Páginas' },
+    en: { president: 'President', pages: 'Pages' },
   };
+
+  // state tabs are just the UF ('rj-governor' -> 'RJ'): every state page is its governor runoff; the president is spelled out above
+  const navLabel = (lang, key) => NAV[lang][key] ?? key.split('-')[0].toUpperCase();
 
   const INTENTION = {
     'pt-BR': {
@@ -102,7 +105,7 @@
         document.title = value('pageTitle');
         document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = value(el.dataset.i18n); });
         document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = value(el.dataset.i18nHtml); });
-        document.querySelectorAll('[data-nav]').forEach((el) => { el.textContent = NAV[lang][el.dataset.nav]; });
+        document.querySelectorAll('[data-nav]').forEach((el) => { el.textContent = navLabel(lang, el.dataset.nav); });
         document.querySelector('.tabs')?.setAttribute('aria-label', NAV[lang].pages);
         document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
         const box = document.getElementById('intention');
