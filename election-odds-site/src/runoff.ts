@@ -13,7 +13,8 @@ import type { State } from './states.ts';
  *  - the first-round RESULT, treated as one more poll: dated election day, with the votes of the two finalists combined as its sample
  *    (millions of voters) and each finalist's valid-vote share with the eliminated candidates' voters split evenly.
  *
- * Every entry weighs log(sample size) x 0.5^(age / HALF_LIFE_DAYS). The result's log weight is only about twice a typical poll's,
+ * Every entry weighs log(sample size) x 0.5^(age / HALF_LIFE_DAYS); polls taken before the first round age one extra half-life,
+ * because they were fielded with the eliminated candidates still in the race. The result's log weight is only about twice a typical poll's,
  * so it does not drown a pile of recent polls, and it fades with the same half-life until real runoff polls overtake it.
  * The finalists' share of the runoff vote is then taken as normally distributed around that average, with a spread
  * (sdPoints) for what the average does not know: where the eliminated candidates' voters go (more uncertainty the more
@@ -113,7 +114,10 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
   const validVotes = spec.firstRound.validVotes;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   const cutoff = new Date(new Date(FIRST_ROUND).getTime() - WINDOW_DAYS * DAY).toISOString().slice(0, 10);
-  const weightOf = (sample: number, end: string) => Math.log(Math.max(sample, 2)) * 0.5 ** (Math.max(0, days(end, today)) / HALF_LIFE_DAYS);
+  // a poll taken before the first round was fielded with the eliminated candidates still in the race, so it ages one extra
+  // half-life from election day on: importance runs pre-election polls < first-round result < recent runoff polls
+  const weightOf = (sample: number, end: string) =>
+    Math.log(Math.max(sample, 2)) * 0.5 ** ((Math.max(0, days(end, today)) + (end <= FIRST_ROUND ? HALF_LIFE_DAYS : 0)) / HALF_LIFE_DAYS);
 
   const raw = (await spec.load())
     .filter((p) => p.end >= cutoff && p.end <= today && (!spec.allowed || spec.allowed.test(p.pollster)));
@@ -133,7 +137,8 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
   // own votes would flatter the front-runner: those voters have already shown they did not pick her.)
   const validA = (100 * votes.a) / validVotes, validB = (100 * votes.b) / validVotes;
   const electA = 50 + (validA - validB) / 2;
-  const result: RunoffPollRow = { kind: 'result', pollster: 'Resultado do 1º turno', end: FIRST_ROUND, sample: votes.a + votes.b, raw: electA, adjusted: electA, shift: 0, weight: weightOf(votes.a + votes.b, FIRST_ROUND), preElection: true };
+  const resultWeight = Math.log(votes.a + votes.b) * 0.5 ** (Math.max(0, days(FIRST_ROUND, today)) / HALF_LIFE_DAYS); // no extra half-life: it is the election itself
+  const result: RunoffPollRow = { kind: 'result', pollster: 'Resultado do 1º turno', end: FIRST_ROUND, sample: votes.a + votes.b, raw: electA, adjusted: electA, shift: 0, weight: resultWeight, preElection: true };
 
   const all = [...polls, result].sort((x, y) => y.end.localeCompare(x.end) || (x.kind === 'result' ? 1 : -1));
   const wAll = all.reduce((s, r) => s + r.weight, 0);

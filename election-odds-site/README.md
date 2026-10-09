@@ -38,7 +38,9 @@ One weighted average of "polls", where the first-round result is simply one more
    sample, and the finalists' valid-vote shares with the eliminated candidates' voters split **evenly** between the two
    (A's share = 50 + (A − B)/2; splitting them in proportion to the finalists' own votes would flatter the front-runner, since those voters
    did not pick her).
-3. **Weights**: every entry weighs log(sample size) × 0.5^(age / 4 days). The result's log weight is only about twice a typical poll's, so
+3. **Weights**: every entry weighs log(sample size) × 0.5^(age / 4 days). Polls taken before the first round age **one extra half-life**
+   (they weigh half as much: they were fielded with the eliminated candidates still in the race), which gives the intended order of importance:
+   pre-election polls < first-round result < recent runoff polls. The result's log weight is only about twice a typical poll's, so
    it does not drown a pile of recent polls (it is about 16% of the president's weight today, 60–75% in the states, which have few polls),
    and it fades with the same half-life until real runoff polls overtake it.
 4. **Odds**: the finalists' runoff share is normal around the average. Its standard deviation (`sdPoints`) is
