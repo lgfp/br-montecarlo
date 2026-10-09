@@ -65,7 +65,7 @@ interface Spec {
   load: () => Promise<RawPoll[]>;
   /** which pollsters count; absent = all */
   allowed?: RegExp;
-  /** points of two-way share moved from A to B in a pre-election poll (negative moves them from B to A) */
+  /** points of two-way share moved from A to B in one of the institute's polls (negative moves them from B to A) */
   adjust: (poll: RawPoll) => number;
 }
 
@@ -124,7 +124,7 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
   const polls: RunoffPollRow[] = raw.map((p) => {
     const preElection = p.end <= FIRST_ROUND;
     const twoWay = (100 * p.a) / (p.a + p.b);
-    const shift = preElection ? spec.adjust(p) : 0;
+    const shift = spec.adjust(p); // an institute's bias applies to all its polls, before and after the first round
     return { kind: 'poll' as const, pollster: p.pollster, end: p.end, sample: p.sample, raw: twoWay, adjusted: twoWay - shift, shift, weight: weightOf(p.sample, p.end), preElection };
   }).sort((x, y) => y.end.localeCompare(x.end));
 

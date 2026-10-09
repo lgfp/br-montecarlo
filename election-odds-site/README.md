@@ -56,7 +56,7 @@ One weighted average of "polls", where the first-round result is simply one more
   (`src/bias.ts` reproduces this): Lula's share was overstated by Datafolha (+0.5), Quaest (+0.8), AtlasIntel (+1.8) and understated by
   Palver (−1.7) and Futura (−2.5). Adjustments, in points of two-way share moved between the candidates, are about half the measured miss
   (Datafolha −0.7 for Lula, also reflecting its history, Quaest −0.5, AtlasIntel −1.0, Palver +1.0, Futura +1.5). Others: none.
-  Adjustments apply to pre-election polls only; polls taken after the first round enter as published.
+  They apply to every poll from those institutes, before and after the first round.
 - **States**: no adjustment; no bias was measured there.
 - `src/corrections.ts` holds hand-checked fixes to incomplete Wikipedia rows (e.g. Veritá's Oct 2 poll, others = 8%).
 
