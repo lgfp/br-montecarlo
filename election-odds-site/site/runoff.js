@@ -109,7 +109,7 @@
     stage.replaceChildren(card(A, ODDS.p.a), vs, card(B, ODDS.p.b));
 
     // share: WhatsApp, X, copy link. The preview card comes from the page's Open Graph tags.
-    const url = PAGE.url;
+    const url = PAGE.shareUrl; // carries a version of the preview card, so every change of odds is a fresh preview in chat apps
     const text = `${t.share.title} · ${PAGE.shortTitle[lang === 'en' ? 'en' : 'pt-BR']}: ${A.name} ${h.pct(ODDS.p.a)} × ${B.name} ${h.pct(ODDS.p.b)}`;
     const link = (label, href) => {
       const a = el('a', 'share-btn', label);

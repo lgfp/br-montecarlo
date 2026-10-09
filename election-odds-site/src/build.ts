@@ -1,5 +1,6 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { computePresidentRunoff, computeStateRunoff, type RunoffOdds } from './runoff.ts';
 import { STATES, wikiUrl } from './states.ts';
 import { renderCard } from './og.ts';
@@ -97,28 +98,36 @@ const pages: Page[] = [
 for (const pg of pages) {
   const [a, b] = pg.candidates;
   const o = pg.odds;
+  const url = `${SITE}/${pg.dir ? `${pg.dir}/` : ''}`;
+  const ogName = pg.dir || 'presidente';
+  const candidates = pg.candidates.map((c) => ({ name: c.name, party: c.party, slug: slug(c.name), image: image(pg.dir, c.name, c.flat) }));
+  const [ia, ib] = candidates;
+  const ogTitle = `${pg.shortTitle['pt-BR']} · 2º turno: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)}`;
+
+  // The preview card shows the odds, so it changes whenever they do. Chat apps and social networks cache a preview by URL for days,
+  // so the card and the link people share carry a short hash of the card: new odds, new URL, fresh preview.
+  const card = await renderCard({
+    eyebrow: `${pg.office['pt-BR']} · 2º turno: 25 de outubro`,
+    title: 'Quem vence o 2º turno?',
+    candidates: [{ name: a.name, party: a.party, pct: pct(o.p.a), image: ia.image }, { name: b.name, party: b.party, pct: pct(o.p.b), image: ib.image }],
+    site: 'cinquentamaisum.com',
+  }, 'site');
+  const version = createHash('sha1').update(card).digest('hex').slice(0, 8);
+  await mkdir('dist/og', { recursive: true });
+  await writeFile(`dist/og/${ogName}.png`, card);
+
   const data = {
     ...o,
     page: {
       kind: pg.kind, office: pg.office, shortTitle: pg.shortTitle, adjustments: pg.adjustments, warning: pg.warning, wikiUrl: pg.wikiUrl,
-      candidates: pg.candidates.map((c) => ({ name: c.name, party: c.party, slug: slug(c.name), image: image(pg.dir, c.name, c.flat) })),
-      url: `${SITE}/${pg.dir ? `${pg.dir}/` : ''}`,
+      candidates,
+      url,
+      shareUrl: `${url}?v=${version}`,
     },
   };
   const out = pg.dir ? `dist/${pg.dir}` : 'dist';
   await mkdir(out, { recursive: true });
   await writeFile(`${out}/data.json`, JSON.stringify(data, null, 2) + '\n');
-  const url = `${SITE}/${pg.dir ? `${pg.dir}/` : ''}`;
-  const ogName = pg.dir || 'presidente';
-  const [ia, ib] = data.page.candidates;
-  const ogTitle = `${pg.shortTitle['pt-BR']} · 2º turno: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)}`;
-  await mkdir('dist/og', { recursive: true });
-  await writeFile(`dist/og/${ogName}.png`, await renderCard({
-    eyebrow: `${pg.office['pt-BR']} · 2º turno: 25 de outubro`,
-    title: 'Quem vence o 2º turno?',
-    candidates: [{ name: a.name, party: a.party, pct: pct(o.p.a), image: ia.image }, { name: b.name, party: b.party, pct: pct(o.p.b), image: ib.image }],
-    site: 'cinquentamaisum.com',
-  }, 'site'));
   await writeFile(`${out}/index.html`, template
     .replaceAll('__ROOT__', pg.dir ? '../' : './')
     .replace('__NAV__', nav(pg.tab))
@@ -126,7 +135,7 @@ for (const pg of pages) {
     .replaceAll('__DESCRIPTION__', pg.description)
     .replaceAll('__URL__', url)
     .replaceAll('__OG_TITLE__', ogTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'))
-    .replaceAll('__OG_IMAGE__', `${SITE}/og/${ogName}.png`)
+    .replaceAll('__OG_IMAGE__', `${SITE}/og/${ogName}.png?v=${version}`)
     .replace('__ODDS_JSON__', json(data))
     .replace('__NOSCRIPT__', `Vence o 2º turno: ${a.name} ${pct(o.p.a)} · ${b.name} ${pct(o.p.b)}`));
   console.log(`${pg.shortTitle['pt-BR']}: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)} (estimate ${(o.estimate.a * 100).toFixed(1)}/${(o.estimate.b * 100).toFixed(1)}, ${o.pollsUsed} polls, ${o.effectivePolls} effective, 1st round ${(o.firstRoundWeight * 100).toFixed(0)}% of the weight)`);

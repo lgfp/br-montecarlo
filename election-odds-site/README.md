@@ -64,7 +64,8 @@ One weighted average of "polls", where the first-round result is simply one more
 
 Each page has a share row (WhatsApp, X, copy link) and Open Graph / Twitter card tags. The preview image is a 1200×630 card generated at
 build time (`src/og.ts`, with `sharp`): both candidates, portraits when available, and the live odds, saved as `dist/og/<page>.png`.
-The public address (`SITE` in `src/build.ts`) is used for canonical and absolute URLs.
+The public address (`SITE` in `src/build.ts`) is used for canonical and absolute URLs. Chat apps cache a preview by URL for days, so
+the card URL and the shared link carry `?v=<hash of the card>`: new odds, new URL, fresh preview.
 
 ## Portraits
 
