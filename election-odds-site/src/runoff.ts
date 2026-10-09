@@ -32,7 +32,7 @@ export const ELECTION_WEIGHT = 0.8;
 /**
  * 1 standard deviation of the finalists' two-way share, in points. Two independent parts:
  *  - where the eliminated candidates' voters go: they hold `eliminated` % of the valid vote and we are unsure of the
- *    split by about 20 points (ELIMINATED_SPLIT_SD), so this part is 0.20 x eliminated (1.6 in Rio, 5.4 in Rio Grande do Norte);
+ *    split by about 20 points (ELIMINATED_SPLIT_SD), so this part is 0.20 x eliminated (1.6 for the president, 5.4 in Rio Grande do Norte);
  *  - who turns out and other late shifts: a flat 1.2 (TURNOUT_SD).
  */
 const ELIMINATED_SPLIT_SD = 0.2;
@@ -219,9 +219,6 @@ export async function computePresidentRunoff(): Promise<RunoffOdds> {
 
 // ---- Governors ----
 
-/** points of two-way share moved from Paes to Ruas in every pre-election Rio runoff poll (the first-round polls missed Ruas by roughly this much once restated as a two-way split) */
-export const RIO_RUAS_BOOST = 10;
-
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 /** a poll column / heading names a finalist when one contains the other ("Allyson" vs "Allyson", "Professora Dorinha") */
 const same = (label: string, name: string) => { const a = plain(label), b = plain(name); return a.includes(b) || b.includes(a); };
@@ -234,8 +231,8 @@ export async function computeStateRunoff(state: State): Promise<RunoffOdds> {
     firstRound,
     a: { name: a.name, party: a.party },
     b: { name: b.name, party: b.party },
-    // only Rio has a bias estimate (see RIO_RUAS_BOOST); everywhere else the polls enter as published
-    adjust: () => (state.uf === 'RJ' ? -RIO_RUAS_BOOST : 0),
+    // no bias was measured in the states: the polls enter as published
+    adjust: () => 0,
     load: async () => {
       const [rows, tse] = await Promise.all([
         // the section of the two finalists head to head; never the first-round tables

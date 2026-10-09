@@ -10,11 +10,12 @@ The first round (4 October) is over, so the site has one page per runoff, presid
 | AM | `/governo-am/` | Amazonas |
 | DF | `/governo-df/` | Distrito Federal |
 | ES | `/governo-es/` | Espírito Santo |
-| RJ | `/governo-rj/` | Rio de Janeiro (Ruas × Paes) |
 | RN | `/governo-rn/` | Rio Grande do Norte |
 | TO | `/governo-to/` | Tocantins |
 
-Those are the seven governor races where nobody passed 50% (checked against the TSE results). Each page ends with a "Como funciona" section:
+Those are the governor races where nobody passed 50% (checked against the TSE results). Rio de Janeiro was one until 8 October, when the
+TSE annulled Garotinho's votes: that put Ruas above 50% of the valid vote, so he won in the first round and the Rio page was removed
+(the TRE-RJ's re-count and a possible appeal to the Supreme Court are still pending). Each page ends with a "Como funciona" section:
 method, the first-round and poll components, the pollster adjustments, a runoff vote estimate with its 95% margin, and a collapsible
 table of every poll used with its raw value, adjustment and weight. Probabilities under 1% are shown as "<1%", above 99% as ">99%".
 Everything is computed at build time.
@@ -37,7 +38,7 @@ Everything is computed at build time.
 3. **Blend**: 80% first-round result, 20% polls (`ELECTION_WEIGHT`).
 4. **Odds**: the finalists' runoff share is normal around the blend. Its standard deviation (`sdPoints`) is
    √((0.20 × share of the vote that was eliminated)² + 1.2²) points: how unsure we are where eliminated voters go grows with their weight
-   (2.0 in Rio and for the president, 7.1 in Amazonas, 5.5 in Rio Grande do Norte), plus 1.2 for turnout.
+   (2.0 for the president, 7.1 in Amazonas, 5.5 in Rio Grande do Norte), plus 1.2 for turnout.
 5. **Reliability**: a state needs at least 3 runoff polls from at least 2 institutes in the window. Otherwise the polls are ignored, the
    estimate is the first-round result alone, and the page shows a warning.
 
@@ -51,9 +52,7 @@ adjustments and the build prints a warning, because the 80/20 blend should be re
   (`src/bias.ts` reproduces this): Lula's share was overstated by Datafolha (+0.5), Quaest (+0.8), AtlasIntel (+1.8) and understated by
   Palver (−1.7) and Futura (−2.5). Adjustments, in points of two-way share moved between the candidates, are about half the measured miss
   (Datafolha −0.7 for Lula, also reflecting its history, Quaest −0.5, AtlasIntel −1.0, Palver +1.0, Futura +1.5). Others: none.
-- **Rio**: every pre-election runoff poll moves 10 points from Paes to Ruas (`RIO_RUAS_BOOST`); the first-round polls missed the Ruas–Paes gap
-  by roughly that much in two-way terms. The first-round result and any post-election poll get no such shift.
-- **Other states**: no adjustment; no bias was measured there.
+- **States**: no adjustment; no bias was measured there.
 - `src/corrections.ts` holds hand-checked fixes to incomplete Wikipedia rows (e.g. Veritá's Oct 2 poll, others = 8%).
 
 ## Sharing
@@ -65,7 +64,7 @@ The public address (`SITE` in `src/build.ts`) is used for canonical and absolute
 ## Portraits
 
 Optional, one file per candidate: `site/img/lula.webp`, `site/img/flavio.webp`, `site/img/governo-<uf>/<candidate-slug>.webp`
-(`.png`/`.jpg` also work; the slug is the name as shown on the page, e.g. `douglas-ruas`). Only Rio has portraits so far; the other states show names only. Transparent 782×926 works best.
+(`.png`/`.jpg` also work; the slug is the name as shown on the page, e.g. `omar-aziz`). The state pages show names only so far. Transparent 782×926 works best.
 
 ## Run
 

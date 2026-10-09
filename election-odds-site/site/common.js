@@ -6,7 +6,7 @@
     en: { president: 'President', pages: 'Pages' },
   };
 
-  // state tabs are just the UF ('rj-governor' -> 'RJ'): every state page is its governor runoff; the president is spelled out above
+  // state tabs are just the UF ('am-governor' -> 'AM'): every state page is its governor runoff; the president is spelled out above
   const navLabel = (lang, key) => NAV[lang][key] ?? key.split('-')[0].toUpperCase();
 
   const INTENTION = {

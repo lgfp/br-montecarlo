@@ -1,6 +1,6 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { computePresidentRunoff, computeStateRunoff, RIO_RUAS_BOOST, type RunoffOdds } from './runoff.ts';
+import { computePresidentRunoff, computeStateRunoff, type RunoffOdds } from './runoff.ts';
 import { STATES, wikiUrl } from './states.ts';
 import { renderCard } from './og.ts';
 
@@ -73,21 +73,15 @@ const pages: Page[] = [
     const state = STATES[uf];
     const odds = stateOdds.get(uf)!;
     const [a, b] = odds.intention.rows;
-    const rio = uf === 'RJ';
     return {
       tab: `${uf.toLowerCase()}-governor`, dir: `governo-${uf.toLowerCase()}`, kind: 'state', odds,
       candidates: [{ name: a.name, party: a.party }, { name: b.name, party: b.party }],
       office: { 'pt-BR': `Governo · ${state.name}`, en: `${state.name} · Governor` },
       shortTitle: { 'pt-BR': `Governo ${uf}`, en: `${uf} governor` },
-      adjustments: rio
-        ? {
-          'pt-BR': `As pesquisas de 2º turno do Rio anteriores à eleição subestimaram Douglas Ruas por uma margem grande: no 1º turno, as pesquisas erraram o placar entre ele e Paes em cerca de 10 pontos, em todos os institutos. Por isso, só nessas pesquisas, ${RIO_RUAS_BOOST} pontos passam de Paes para Ruas. O resultado do 1º turno não recebe esse ajuste, e pesquisas feitas depois da eleição também não.`,
-          en: `Rio’s runoff polls from before the election understated Douglas Ruas by a wide margin: in the first round the polls missed the gap between him and Paes by about 10 points, at every pollster. So, in these polls only, ${RIO_RUAS_BOOST} points are moved from Paes to Ruas. The first-round result gets no such adjustment, and neither do polls taken after the election.`,
-        }
-        : {
-          'pt-BR': 'Não há ajuste de viés de instituto neste estado: as pesquisas de 2º turno entram como foram publicadas. Só pesquisas de 2º turno (os dois finalistas frente a frente) são usadas, nunca pesquisas do 1º turno com vários candidatos.',
-          en: 'No pollster-bias adjustment is applied in this state: runoff polls enter as published. Only runoff polls (the two finalists head to head) are used, never first-round polls with many candidates.',
-        },
+      adjustments: {
+        'pt-BR': 'Não há ajuste de viés de instituto neste estado: as pesquisas de 2º turno entram como foram publicadas. Só pesquisas de 2º turno (os dois finalistas frente a frente) são usadas, nunca pesquisas do 1º turno com vários candidatos.',
+        en: 'No pollster-bias adjustment is applied in this state: runoff polls enter as published. Only runoff polls (the two finalists head to head) are used, never first-round polls with many candidates.',
+      },
       warning: odds.pollsReliable
         ? null
         : {

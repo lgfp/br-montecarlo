@@ -10,12 +10,12 @@
       'pt-BR': `<a href="https://en.wikipedia.org/wiki/Opinion_polling_for_the_2026_Brazilian_presidential_election">Wikipédia (em inglês)</a> e o resultado oficial do 1º turno, do <a href="https://resultados.tse.jus.br/">TSE</a>`,
       en: `<a href="https://en.wikipedia.org/wiki/Opinion_polling_for_the_2026_Brazilian_presidential_election">Wikipedia</a> and the official first-round result from the <a href="https://resultados.tse.jus.br/">TSE</a>`,
     },
-    rio: {
+    state: {
       'pt-BR': `<a href="${PAGE.wikiUrl}">Wikipédia</a> e o resultado oficial do 1º turno, do <a href="https://resultados.tse.jus.br/">TSE</a>`,
       en: `<a href="${PAGE.wikiUrl}">Wikipedia (in Portuguese)</a> and the official first-round result from the <a href="https://resultados.tse.jus.br/">TSE</a>`,
     },
   };
-  const SRC = PAGE.kind === 'president' ? SOURCES.president : SOURCES.rio;
+  const SRC = PAGE.kind === 'president' ? SOURCES.president : SOURCES.state;
 
   const pp = (n, lang) => new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n);
 

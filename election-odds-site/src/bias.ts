@@ -4,7 +4,6 @@ import { fetchPresidentPtPolls } from './president-pt.ts';
 import { fetchStatePolls } from './senate-wikipedia.ts';
 import { applyCorrections } from './corrections.ts';
 import { HALF_LIFE_DAYS } from './forecast.ts';
-import { STATES } from './states.ts';
 
 // Pollster bias against the first-round result (TSE count via Wikipedia, 2026-10-04).
 // Error = poll share of the valid vote minus the actual share of the valid vote, in points.
@@ -39,8 +38,9 @@ async function presidentPolls(): Promise<WikiPoll[]> {
 }
 
 async function rjGovernorPolls(): Promise<Poll[]> {
-  const st = STATES.RJ;
-  const [rows, tse] = await Promise.all([fetchStatePolls(st.wikiPage, 'governor'), fetchPolls({ scope: 'RJ', cargo: /governador/i })]);
+  // Rio is no longer a page of the site (Ruas won in the first round), but it stays in this first-round bias analysis
+  const wikiPage = 'Pesquisas_eleitorais_para_a_elei%C3%A7%C3%A3o_estadual_de_2026_no_Rio_de_Janeiro';
+  const [rows, tse] = await Promise.all([fetchStatePolls(wikiPage, 'governor'), fetchPolls({ scope: 'RJ', cargo: /governador/i })]);
   return rows.filter((r) => r.scenario === '1' && tse.some((t) => matchesPoll(t, r)));
 }
 
