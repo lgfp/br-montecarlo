@@ -111,8 +111,11 @@
     // share: WhatsApp, X, copy link. The preview card comes from the page's Open Graph tags.
     const url = PAGE.shareUrl; // carries a version of the preview card, so every change of odds is a fresh preview in chat apps
     const text = `${t.share.title} · ${PAGE.shortTitle[lang === 'en' ? 'en' : 'pt-BR']}: ${A.name} ${h.pct(ODDS.p.a)} × ${B.name} ${h.pct(ODDS.p.b)}`;
-    const link = (label, href) => {
+    // share clicks are counted as GoatCounter events (cookie-free, no personal data); a no-op if the script did not load
+    const track = (name) => { try { window.goatcounter?.count({ path: `share/${name}`, title: `Share: ${name}`, event: true }); } catch { /* analytics must never break the page */ } };
+    const link = (label, href, name) => {
       const a = el('a', 'share-btn', label);
+      a.addEventListener('click', () => track(name));
       a.href = href;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
@@ -121,6 +124,7 @@
     const copy = el('button', 'share-btn', t.share.copy);
     copy.type = 'button';
     copy.addEventListener('click', async () => {
+      track('copy-link');
       try { await navigator.clipboard.writeText(url); } catch {
         const field = el('textarea'); field.value = url; document.body.append(field); field.select(); document.execCommand('copy'); field.remove();
       }
@@ -129,8 +133,8 @@
     });
     document.getElementById('share').replaceChildren(
       el('span', 'share-label', t.share.label),
-      link(t.share.whatsapp, `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`),
-      link(t.share.x, `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`),
+      link(t.share.whatsapp, `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, 'whatsapp'),
+      link(t.share.x, `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, 'x'),
       copy,
     );
 

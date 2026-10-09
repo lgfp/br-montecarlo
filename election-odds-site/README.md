@@ -67,6 +67,12 @@ build time (`src/og.ts`, with `sharp`): both candidates, portraits when availabl
 The public address (`SITE` in `src/build.ts`) is used for canonical and absolute URLs. Chat apps cache a preview by URL for days, so
 the card URL and the shared link carry `?v=<hash of the card>`: new odds, new URL, fresh preview.
 
+## Analytics
+
+Page views and share clicks are counted with [GoatCounter](https://www.goatcounter.com) (cookie-free, no personal data, so no consent banner):
+the snippet is in `site/runoff.template.html`, and `site/runoff.js` records an event for each share button (`share/whatsapp`, `share/x`,
+`share/copy-link`). The dashboard is at `luisguilherme.goatcounter.com`.
+
 ## Portraits
 
 Optional, one file per candidate: `site/img/lula.webp`, `site/img/flavio.webp`, `site/img/governo-<uf>/<candidate-slug>.webp`
