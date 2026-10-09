@@ -129,6 +129,5 @@ for (const pg of pages) {
     .replaceAll('__OG_IMAGE__', `${SITE}/og/${ogName}.png`)
     .replace('__ODDS_JSON__', json(data))
     .replace('__NOSCRIPT__', `Vence o 2º turno: ${a.name} ${pct(o.p.a)} · ${b.name} ${pct(o.p.b)}`));
-  console.log(`${pg.shortTitle['pt-BR']}: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)} (blend ${(o.blend.a * 100).toFixed(1)}/${(o.blend.b * 100).toFixed(1)}, ${o.pollsUsed} polls, ${o.effectivePolls} effective)`);
-  if (o.postElectionPolls) console.warn(`  ! ${o.postElectionPolls} post-election polls are in the average: revisit the ${o.electionWeight * 100}/${100 - o.electionWeight * 100} blend`);
+  console.log(`${pg.shortTitle['pt-BR']}: ${a.name} ${pct(o.p.a)} × ${b.name} ${pct(o.p.b)} (estimate ${(o.estimate.a * 100).toFixed(1)}/${(o.estimate.b * 100).toFixed(1)}, ${o.pollsUsed} polls, ${o.effectivePolls} effective, 1st round ${(o.firstRoundWeight * 100).toFixed(0)}% of the weight)`);
 }

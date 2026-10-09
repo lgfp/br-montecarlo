@@ -30,20 +30,22 @@ Everything is computed at build time.
 
 ## Model (`src/runoff.ts`)
 
-1. **First-round result**: each finalist's valid-vote share, with the eliminated candidates' voters split **evenly** between the two
-   (A's share = 50 + (A − B)/2). Splitting them in proportion to the finalists' own votes would flatter the front-runner, since those voters
-   did not pick her; this matters most in scattered fields (Amazonas, Acre, Espírito Santo).
-2. **Pre-election runoff polls**: fieldwork ending in the 14 days before the first round, as each candidate's share of the two's votes
-   (undecided dropped), adjusted for pollster bias, then averaged with weight log(sample size) × 0.5^(age / 4 days).
-3. **Blend**: 80% first-round result, 20% polls (`ELECTION_WEIGHT`).
-4. **Odds**: the finalists' runoff share is normal around the blend. Its standard deviation (`sdPoints`) is
+One weighted average of "polls", where the first-round result is simply one more poll:
+
+1. **Runoff polls**: TSE-registered, fieldwork ending in the 14 days before the first round or any time after it, each as the first
+   finalist's share of the two finalists' support (undecided dropped), adjusted for pollster bias (below).
+2. **The first-round result as a poll**: dated election day (4 October), with the **votes of the two finalists combined** as its
+   sample, and the finalists' valid-vote shares with the eliminated candidates' voters split **evenly** between the two
+   (A's share = 50 + (A − B)/2; splitting them in proportion to the finalists' own votes would flatter the front-runner, since those voters
+   did not pick her).
+3. **Weights**: every entry weighs log(sample size) × 0.5^(age / 4 days). The result's log weight is only about twice a typical poll's, so
+   it does not drown a pile of recent polls (it is about 16% of the president's weight today, 60–75% in the states, which have few polls),
+   and it fades with the same half-life until real runoff polls overtake it.
+4. **Odds**: the finalists' runoff share is normal around the average. Its standard deviation (`sdPoints`) is
    √((0.20 × share of the vote that was eliminated)² + 1.2²) points: how unsure we are where eliminated voters go grows with their weight
    (2.0 for the president, 7.1 in Amazonas, 5.5 in Rio Grande do Norte), plus 1.2 for turnout.
 5. **Reliability**: a state needs at least 3 runoff polls from at least 2 institutes in the window. Otherwise the polls are ignored, the
-   estimate is the first-round result alone, and the page shows a warning.
-
-Polls with fieldwork after the first round are **post-election polls**: they enter the same average without the pre-election
-adjustments and the build prints a warning, because the 80/20 blend should be revisited once they arrive.
+   first-round result is the whole average, and the page shows a warning.
 
 ### Pollster adjustments
 
@@ -52,6 +54,7 @@ adjustments and the build prints a warning, because the 80/20 blend should be re
   (`src/bias.ts` reproduces this): Lula's share was overstated by Datafolha (+0.5), Quaest (+0.8), AtlasIntel (+1.8) and understated by
   Palver (−1.7) and Futura (−2.5). Adjustments, in points of two-way share moved between the candidates, are about half the measured miss
   (Datafolha −0.7 for Lula, also reflecting its history, Quaest −0.5, AtlasIntel −1.0, Palver +1.0, Futura +1.5). Others: none.
+  Adjustments apply to pre-election polls only; polls taken after the first round enter as published.
 - **States**: no adjustment; no bias was measured there.
 - `src/corrections.ts` holds hand-checked fixes to incomplete Wikipedia rows (e.g. Veritá's Oct 2 poll, others = 8%).
 

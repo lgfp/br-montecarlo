@@ -6,29 +6,27 @@ import { fetchFirstRound, type FirstRound } from './tse-results.ts';
 import type { State } from './states.ts';
 
 /**
- * Second-round odds for a two-candidate runoff, built from two ingredients:
+ * Second-round odds for a two-candidate runoff, from one weighted average of "polls":
  *
- *  1. the first-round result: each finalist's valid-vote share, with the eliminated candidates' voters split evenly;
- *  2. runoff polls taken before the first round, converted to the same two-way shares, adjusted for
- *     institute bias (see the adjustments below) and averaged (log of sample size x recency).
+ *  - the runoff polls taken in the two weeks before the first round, plus any taken after it, each as the first finalist's
+ *    share of the two finalists' support (undecided dropped), adjusted for institute bias (see below);
+ *  - the first-round RESULT, treated as one more poll: dated election day, with the votes of the two finalists combined as its sample
+ *    (millions of voters) and each finalist's valid-vote share with the eliminated candidates' voters split evenly.
  *
- * The estimate is a 80/20 blend of the two. The finalists' share of the runoff vote is then taken as
- * normally distributed around that blend, with a spread (sdPoints) that stands for what neither ingredient
- * knows: where the eliminated candidates' voters go (more uncertainty the more voters were eliminated), and who turns out.
+ * Every entry weighs log(sample size) x 0.5^(age / HALF_LIFE_DAYS). The result's log weight is only about twice a typical poll's,
+ * so it does not drown a pile of recent polls, and it fades with the same half-life until real runoff polls overtake it.
+ * The finalists' share of the runoff vote is then taken as normally distributed around that average, with a spread
+ * (sdPoints) for what the average does not know: where the eliminated candidates' voters go (more uncertainty the more
+ * voters were eliminated), and who turns out.
  *
  * Only RUNOFF polls count (tables of the two finalists head to head), never first-round "big field" polls.
  * If a state has too few runoff polls to rely on (fewer than MIN_POLLS polls or MIN_POLLSTERS institutes in the window),
- * the polls are ignored and the estimate is the first-round result alone; the page says so.
- *
- * Polls whose fieldwork ended after the first round are post-election polls: they enter the same average
- * without the pre-election adjustments, and the run prints a warning because the blend should be revisited.
+ * the polls are ignored, so the first-round result is the whole average; the page says so.
  */
 
 export const RUNOFF_DATE = '2026-10-25';
 const FIRST_ROUND = '2026-10-04';
 
-/** weight of the first-round result in the blend; the rest goes to the polls */
-export const ELECTION_WEIGHT = 0.8;
 /**
  * 1 standard deviation of the finalists' two-way share, in points. Two independent parts:
  *  - where the eliminated candidates' voters go: they hold `eliminated` % of the valid vote and we are unsure of the
@@ -71,10 +69,12 @@ interface Spec {
 }
 
 export interface RunoffPollRow {
+  /** 'result' is the first-round result, entered as a poll whose sample is the two finalists' votes combined */
+  kind: 'poll' | 'result';
   pollster: string;
   end: string;
   sample: number;
-  /** A's raw two-way share (%), A's share after the adjustment, the adjustment moved from A to B, and the poll's weight */
+  /** A's raw two-way share (%), A's share after the adjustment, the adjustment moved from A to B, and the entry's weight */
   raw: number;
   adjusted: number;
   shift: number;
@@ -85,21 +85,23 @@ export interface RunoffPollRow {
 export interface RunoffOdds {
   generatedAt: string;
   runoffDate: string;
-  /** weight of the first-round result in the blend (1 when the polls were not used) */
-  electionWeight: number;
   /** runoff polls found in the window, and whether there were enough of them to use */
   pollsFound: number;
   pollsReliable: boolean;
   sdPoints: number;
   /** each finalist's first-round share of all valid votes, and the share of the runoff vote that implies if the eliminated voters split evenly */
   firstRound: { a: { valid: number; evenSplit: number }; b: { valid: number; evenSplit: number } };
+  /** the first-round result's share of the total weight today */
+  firstRoundWeight: number;
+  /** runoff polls used (the first-round result is not counted here) */
   pollsUsed: number;
   effectivePolls: number;
   oldestPoll: string | null;
   newestPoll: string | null;
-  /** polls' average two-way share, after adjustments (null when no poll qualifies) */
+  /** the runoff polls' own average two-way share, after adjustments (null when no poll qualifies) */
   polls: { a: number; b: number } | null;
-  blend: { a: number; b: number };
+  /** the weighted average of the polls and the first-round result: the estimate */
+  estimate: { a: number; b: number };
   /** probability of winning the runoff */
   p: { a: number; b: number };
   pollRows: RunoffPollRow[];
@@ -111,40 +113,43 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
   const validVotes = spec.firstRound.validVotes;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   const cutoff = new Date(new Date(FIRST_ROUND).getTime() - WINDOW_DAYS * DAY).toISOString().slice(0, 10);
+  const weightOf = (sample: number, end: string) => Math.log(Math.max(sample, 2)) * 0.5 ** (Math.max(0, days(end, today)) / HALF_LIFE_DAYS);
 
   const raw = (await spec.load())
     .filter((p) => p.end >= cutoff && p.end <= today && (!spec.allowed || spec.allowed.test(p.pollster)));
-  const rows: RunoffPollRow[] = raw.map((p) => {
+  const polls: RunoffPollRow[] = raw.map((p) => {
     const preElection = p.end <= FIRST_ROUND;
     const twoWay = (100 * p.a) / (p.a + p.b);
     const shift = preElection ? spec.adjust(p) : 0;
-    const age = Math.max(0, days(p.end, today));
-    return { pollster: p.pollster, end: p.end, sample: p.sample, raw: twoWay, adjusted: twoWay - shift, shift, weight: Math.log(Math.max(p.sample, 2)) * 0.5 ** (age / HALF_LIFE_DAYS), preElection };
+    return { kind: 'poll' as const, pollster: p.pollster, end: p.end, sample: p.sample, raw: twoWay, adjusted: twoWay - shift, shift, weight: weightOf(p.sample, p.end), preElection };
   }).sort((x, y) => y.end.localeCompare(x.end));
 
-  const found = rows.length;
-  const reliable = found >= MIN_POLLS && new Set(rows.map((r) => r.pollster.toLowerCase())).size >= MIN_POLLSTERS;
-  if (!reliable) rows.length = 0; // too thin: first-round result alone
+  const found = polls.length;
+  const reliable = found >= MIN_POLLS && new Set(polls.map((r) => r.pollster.toLowerCase())).size >= MIN_POLLSTERS;
+  if (!reliable) polls.length = 0; // too thin: the first-round result is the whole average
 
-  const wSum = rows.reduce((s, r) => s + r.weight, 0);
-  const pollA = rows.length ? rows.reduce((s, r) => s + r.weight * r.adjusted, 0) / wSum : null;
-
-  // The eliminated candidates' voters are assumed to split evenly between the finalists, so A's share of the two-way vote
-  // is 50 + (A's valid-vote share - B's) / 2. (Splitting them in proportion to the finalists' own votes would flatter the
-  // front-runner: those voters have already shown they did not pick her.)
+  // The first-round result as a poll. The eliminated candidates' voters are assumed to split evenly between the finalists, so
+  // A's share of the two-way vote is 50 + (A's valid-vote share - B's) / 2. (Splitting them in proportion to the finalists'
+  // own votes would flatter the front-runner: those voters have already shown they did not pick her.)
   const validA = (100 * votes.a) / validVotes, validB = (100 * votes.b) / validVotes;
   const electA = 50 + (validA - validB) / 2;
-  const weight = pollA === null ? 1 : ELECTION_WEIGHT;
-  const blendA = weight * electA + (1 - weight) * (pollA ?? 0);
+  const result: RunoffPollRow = { kind: 'result', pollster: 'Resultado do 1º turno', end: FIRST_ROUND, sample: votes.a + votes.b, raw: electA, adjusted: electA, shift: 0, weight: weightOf(votes.a + votes.b, FIRST_ROUND), preElection: true };
+
+  const all = [...polls, result].sort((x, y) => y.end.localeCompare(x.end) || (x.kind === 'result' ? 1 : -1));
+  const wAll = all.reduce((s, r) => s + r.weight, 0);
+  const estA = all.reduce((s, r) => s + r.weight * r.adjusted, 0) / wAll;
+
+  const wPolls = polls.reduce((s, r) => s + r.weight, 0);
+  const pollA = polls.length ? polls.reduce((s, r) => s + r.weight * r.adjusted, 0) / wPolls : null;
+
   const eliminated = 100 - (100 * (votes.a + votes.b)) / validVotes;
   const sd = sdPoints(eliminated);
-  const pA = phi((blendA - 50) / sd);
+  const pA = phi((estA - 50) / sd);
   const margin = 1.96 * sd / 100;
 
   return {
     generatedAt: new Date().toISOString(),
     runoffDate: RUNOFF_DATE,
-    electionWeight: weight,
     pollsFound: found,
     pollsReliable: reliable,
     sdPoints: Math.round(sd * 10) / 10,
@@ -152,20 +157,21 @@ async function build(spec: Spec, votes: { a: number; b: number }): Promise<Runof
       a: { valid: votes.a / validVotes, evenSplit: electA / 100 },
       b: { valid: votes.b / validVotes, evenSplit: 1 - electA / 100 },
     },
-    pollsUsed: rows.length,
-    effectivePolls: rows.length ? Math.round(((wSum * wSum) / rows.reduce((s, r) => s + r.weight ** 2, 0)) * 10) / 10 : 0,
-    oldestPoll: rows.length ? rows[rows.length - 1].end : null,
-    newestPoll: rows.length ? rows[0].end : null,
+    firstRoundWeight: result.weight / wAll,
+    pollsUsed: polls.length,
+    effectivePolls: polls.length ? Math.round(((wPolls * wPolls) / polls.reduce((s, r) => s + r.weight ** 2, 0)) * 10) / 10 : 0,
+    oldestPoll: polls.length ? polls[polls.length - 1].end : null,
+    newestPoll: polls.length ? polls[0].end : null,
     polls: pollA === null ? null : { a: pollA / 100, b: 1 - pollA / 100 },
-    blend: { a: blendA / 100, b: 1 - blendA / 100 },
+    estimate: { a: estA / 100, b: 1 - estA / 100 },
     p: { a: pA, b: 1 - pA },
-    pollRows: rows,
-    postElectionPolls: rows.filter((r) => !r.preElection).length,
+    pollRows: all,
+    postElectionPolls: polls.filter((r) => !r.preElection).length,
     intention: {
       basis: 'twoWay',
       rows: [
-        { name: spec.a.name, party: spec.a.party, share: blendA / 100, margin },
-        { name: spec.b.name, party: spec.b.party, share: 1 - blendA / 100, margin },
+        { name: spec.a.name, party: spec.a.party, share: estA / 100, margin },
+        { name: spec.b.name, party: spec.b.party, share: 1 - estA / 100, margin },
       ],
       others: null,
     },
