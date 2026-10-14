@@ -90,5 +90,5 @@ npx tsx src/bias.ts   # pollster bias against the first-round result
 
 - `src/` – data fetching (`tse.ts`, `wikipedia.ts`, `senate-wikipedia.ts` for pt.wikipedia state tables), `tse-results.ts` (official first round), `runoff.ts` (model), `states.ts`, `build.ts`
 - `site/` – page template (`runoff.template.html`), styles, scripts (`common.js` shared, `runoff.js`), portraits
-- Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt once a day).
+- Deployment: `.github/workflows/election-odds-site.yml` at the repo root (GitHub Pages, rebuilt twice a day, at about 12:17 and 18:17 Brasília time; GitHub may start scheduled runs hours late).
   In the repo settings, set **Pages → Source** to **GitHub Actions**.

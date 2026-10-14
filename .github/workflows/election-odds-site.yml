@@ -6,9 +6,11 @@ on:
     paths:
       - 'election-odds-site/**'
       - '.github/workflows/election-odds-site.yml'
-  # rebuild once a day, at 09:17 UTC (06:17 in Brasília; scheduled runs use the default branch)
+  # rebuild twice a day, at 15:17 and 21:17 UTC (12:17 and 18:17 in Brasília, which has no daylight saving time).
+  # GitHub starts scheduled runs late when it is busy, sometimes by hours; scheduled runs use the default branch
   schedule:
-    - cron: '17 9 * * *'
+    - cron: '17 15 * * *'
+    - cron: '17 21 * * *'
   workflow_dispatch:
 
 permissions:
