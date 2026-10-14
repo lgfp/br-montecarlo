@@ -35,11 +35,11 @@ const integer = (raw: string): number | null => {
 };
 
 /**
- * First-round 2026 polls from pt.wikipedia, shaped like the English rows (same candidate keys).
+ * First-round (or, with `section: 'runoff'`, Lula x Flávio runoff) 2026 polls from pt.wikipedia, shaped like the English rows (same candidate keys).
  * `keys` are the English table's candidate labels; candidates without a counterpart are summed into `others`.
  * Rows without numbers yet ("Resultado da pesquisa…") and second scenarios of the same poll are skipped.
  */
-export async function fetchPresidentPtPolls(keys: string[]): Promise<WikiPoll[]> {
+export async function fetchPresidentPtPolls(keys: string[], section: 'first' | 'runoff' = 'first'): Promise<WikiPoll[]> {
   const canon = new Map<string, string>();
   for (const [ptWord, enWord] of CANONICAL) {
     const key = keys.find((k) => k.includes(enWord));
@@ -49,16 +49,21 @@ export async function fetchPresidentPtPolls(keys: string[]): Promise<WikiPoll[]>
   const $ = cheerio.load(await pageHtml(PAGE));
   const polls: WikiPoll[] = [];
   const seen = new Set<string>();
-  let h2 = '', h3 = '';
+  let h2 = '', h3 = '', h4 = '';
   $('.mw-parser-output').children().each((_, el) => {
     const e = $(el);
     if (e.hasClass('mw-heading')) {
       const t = e.find('h2,h3,h4').first();
-      if (t.prop('tagName') === 'H2') { h2 = strip(t.text()); h3 = ''; }
-      if (t.prop('tagName') === 'H3') h3 = strip(t.text());
+      if (t.prop('tagName') === 'H2') { h2 = strip(t.text()); h3 = ''; h4 = ''; }
+      if (t.prop('tagName') === 'H3') { h3 = strip(t.text()); h4 = ''; }
+      if (t.prop('tagName') === 'H4') h4 = strip(t.text());
       return;
     }
-    if (el.type !== 'tag' || el.tagName !== 'table' || !e.hasClass('wikitable') || h2 !== 'Primeiro turno' || h3 !== '2026') return;
+    if (el.type !== 'tag' || el.tagName !== 'table' || !e.hasClass('wikitable')) return;
+    // first round: "Primeiro turno" > "2026" (monthly tables); runoff: "Segundo turno" > "Lula e Flávio Bolsonaro" > "2026"
+    // (the aggregator table sits under "Agregação de pesquisas" in the same section)
+    const wanted = section === 'first' ? h2 === 'Primeiro turno' && h3 === '2026' : h2 === 'Segundo turno' && h3 === 'Lula e Flávio Bolsonaro' && h4 === '2026';
+    if (!wanted) return;
 
     const grid = toGrid($, e as cheerio.Cheerio<Element>);
     const head = grid.findIndex((r) => r.some((c) => !c.th));
@@ -90,7 +95,7 @@ export async function fetchPresidentPtPolls(keys: string[]): Promise<WikiPoll[]>
 
       seen.add(id);
       polls.push({
-        round: 1,
+        round: section === 'first' ? 1 : 2,
         pollster,
         period: strip(row[1].text),
         end,

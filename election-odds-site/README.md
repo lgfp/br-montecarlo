@@ -32,7 +32,8 @@ Everything is computed at build time.
 
 One weighted average of "polls", where the first-round result is simply one more poll:
 
-1. **Runoff polls**: TSE-registered, fieldwork ending in the 14 days before the first round or any time after it, each as the first
+1. **Runoff polls**: TSE-registered (the president's come from both the English and the Portuguese Wikipedia runoff tables, English first,
+   Portuguese rows added only for polls the English table lacks; a state's from its Portuguese page), fieldwork ending in the 14 days before the first round or any time after it, each as the first
    finalist's share of the two finalists' support (undecided dropped), adjusted for pollster bias (below).
 2. **The first-round result as a poll**: dated election day (4 October), with the **votes of the two finalists combined** as its
    sample, and the finalists' valid-vote shares with the eliminated candidates' voters split **evenly** between the two

@@ -1,5 +1,6 @@
 import { fetchPresidentialPolls, fetchPolls } from './tse.ts';
-import { fetchWikipediaPolls, matchesPoll } from './wikipedia.ts';
+import { fetchWikipediaPolls, matchesPoll, samePollster, type WikiPoll } from './wikipedia.ts';
+import { fetchPresidentPtPolls } from './president-pt.ts';
 import { fetchStatePolls } from './senate-wikipedia.ts';
 import { HALF_LIFE_DAYS } from './forecast.ts';
 import { fetchFirstRound, type FirstRound } from './tse-results.ts';
@@ -215,10 +216,24 @@ export async function computePresidentRunoff(): Promise<RunoffOdds> {
     allowed: PRESIDENT_ALLOWED,
     adjust: (p) => PRESIDENT_PENALTY.find(([re]) => re.test(p.pollster))?.[1] ?? 0,
     load: async () => {
-      const [tse, wiki] = await Promise.all([fetchPresidentialPolls(), fetchWikipediaPolls()]);
-      const find = (w: (typeof wiki)[number], key: string) => Object.entries(w.values).find(([n]) => n.includes(key))?.[1] ?? null;
+      const [tse, wikiAll] = await Promise.all([fetchPresidentialPolls(), fetchWikipediaPolls()]);
+      // English rows first; the Portuguese runoff table (often a day or two ahead, and with pollsters the English page omits)
+      // adds only polls the English page does not have. Same poll = same pollster and last fieldwork day, or a day apart with
+      // identical numbers. If the Portuguese page fails or changes layout, English alone is used.
+      const en = wikiAll.filter((w) => w.round === 2);
+      const keys = Object.keys(en.find((w) => Object.keys(w.values).length)?.values ?? {});
+      const pt = await fetchPresidentPtPolls(keys, 'runoff').catch((err) => {
+        console.warn(`pt.wikipedia presidential runoff table skipped: ${err instanceof Error ? err.message : err}`);
+        return [] as WikiPoll[];
+      });
+      const lead = (p: WikiPoll) => Object.entries(p.values).filter(([k]) => /Lula|Bolsonaro/.test(k)).map(([, v]) => v).join('/');
+      const dayApart = (x: string, y: string) => Math.abs(new Date(x).getTime() - new Date(y).getTime()) <= DAY;
+      const extra = pt.filter((p) => !en.some((e) => samePollster(e.pollster, p.pollster) && (e.end === p.end || (dayApart(e.end, p.end) && lead(e) === lead(p)))));
+      const wiki = [...en, ...extra];
+
+      const find = (w: WikiPoll, key: string) => Object.entries(w.values).find(([n]) => n.includes(key))?.[1] ?? null;
       // round 2 = the runoff tables; pairings against other candidates have a null Lula or Flávio column
-      return wiki.filter((w) => w.round === 2 && w.sample && tse.some((t) => matchesPoll(t, w))).flatMap((w): RawPoll[] => {
+      return wiki.filter((w) => w.sample && tse.some((t) => matchesPoll(t, w))).flatMap((w): RawPoll[] => {
         const a = find(w, 'Lula'), b = find(w, 'Bolsonaro');
         const others = Object.entries(w.values).filter(([n, v]) => !/Lula|Bolsonaro/.test(n) && v !== null);
         return a !== null && b !== null && !others.length ? [{ pollster: w.pollster, end: w.end, sample: w.sample as number, a, b }] : [];
