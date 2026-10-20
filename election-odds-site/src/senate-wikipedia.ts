@@ -100,15 +100,15 @@ export const pageHtml = (page: string) => {
 };
 
 /**
- * `runoffPair` (governor-runoff only) picks the matchup's section by its h3, e.g. "Eduardo Paes e Douglas Ruas".
- * Runoff tables carry the two candidates only, plus "Indecisos ou Absentos".
+ * `runoffPair` (governor-runoff only) says whether a heading names the matchup, e.g. "Eduardo Paes e Douglas Ruas".
+ * Runoff tables carry the two candidates only, plus "Indecisos ou Absentos". Pages are laid out differently from state to state
+ * (the runoff section is an h2 "Segundo Turno (Governador)" on some, an h3 "Segundo turno" under "Governador" on others; the matchup
+ * is an h3 or an h4; a "2026" sub-heading may or may not follow), so a runoff table is recognized by its heading path: some heading
+ * says "Segundo turno", some heading names the matchup, and no heading names a year other than 2026.
  */
-export async function fetchStatePolls(page: string, race: Race, runoffPair?: (h3: string) => boolean): Promise<SenatePoll[]> {
+export async function fetchStatePolls(page: string, race: Race, runoffPair?: (heading: string) => boolean): Promise<SenatePoll[]> {
   const $ = cheerio.load(await pageHtml(page));
-  const wantH2 = race === 'senate' ? /^Senador$/i : race === 'governor' ? /^Primeiro Turno \(Governador\)/i : /^Segundo Turno \(Governador\)/i;
-  const wantH3 = { test: (h: string) => (race === 'governor-runoff' && runoffPair ? runoffPair(h) : true) };
-  // first-round pages group by month ("Agosto - Outubro"); runoff pages put the table under the matchup, with or without a "2026" sub-heading
-  const wantH4 = { test: (h: string) => (race === 'governor-runoff' ? /^(2026)?$/.test(h) : /Outubro$/i.test(h)) };
+  const wantH2 = race === 'senate' ? /^Senador$/i : /^Primeiro Turno \(Governador\)/i;
 
   const polls: SenatePoll[] = [];
   let h2 = '', h3 = '', h4 = '';
@@ -119,11 +119,16 @@ export async function fetchStatePolls(page: string, race: Race, runoffPair?: (h3
       if (t.prop('tagName') === 'H2') { h2 = text(t.text()); h3 = ''; h4 = ''; }
       if (t.prop('tagName') === 'H3') { h3 = text(t.text()); h4 = ''; }
       if (t.prop('tagName') === 'H4') h4 = text(t.text());
-    } else if (el.type === 'tag' && el.tagName === 'table' && e.hasClass('wikitable') && wantH2.test(h2) && wantH3.test(h3) && wantH4.test(h4)) {
-      polls.push(...parseTable($, e as cheerio.Cheerio<Element>, 2026));
+      return;
     }
+    if (el.type !== 'tag' || el.tagName !== 'table' || !e.hasClass('wikitable')) return;
+    const path = [h2, h3, h4];
+    const wanted = race === 'governor-runoff'
+      ? path.some((h) => /^Segundo turno/i.test(h)) && path.some((h) => h !== '' && runoffPair?.(h)) && !path.some((h) => /^20\d\d$/.test(h) && h !== '2026')
+      // first-round and Senate pages group by month ("Agosto - Outubro")
+      : wantH2.test(h2) && /Outubro$/i.test(h4);
+    if (wanted) polls.push(...parseTable($, e as cheerio.Cheerio<Element>, 2026));
   });
   if (!polls.length && race !== 'governor-runoff') throw new Error(`No ${race} polls parsed from pt.wikipedia page ${page} (page layout changed?)`);
   return polls;
 }
-

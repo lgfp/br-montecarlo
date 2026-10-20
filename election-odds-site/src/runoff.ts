@@ -44,6 +44,8 @@ const WINDOW_DAYS = 14;
 const MIN_POLLS = 3;
 const MIN_POLLSTERS = 2;
 const DAY = 86_400_000;
+const todayBR = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+const today = todayBR;
 const days = (a: string, b: string) => (new Date(b).getTime() - new Date(a).getTime()) / DAY;
 
 /** standard normal CDF (Abramowitz-Stegun 7.1.26) */
@@ -113,15 +115,20 @@ export interface RunoffOdds {
 
 async function build(spec: Spec, votes: { a: number; b: number }): Promise<RunoffOdds> {
   const validVotes = spec.firstRound.validVotes;
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const today = todayBR();
   const cutoff = new Date(new Date(FIRST_ROUND).getTime() - WINDOW_DAYS * DAY).toISOString().slice(0, 10);
   // a poll taken before the first round was fielded with the eliminated candidates still in the race, so it ages one extra
   // half-life from election day on: importance runs pre-election polls < first-round result < recent runoff polls
   const weightOf = (sample: number, end: string) =>
     Math.log(Math.max(sample, 2)) * 0.5 ** ((Math.max(0, days(end, today)) + (end <= FIRST_ROUND ? HALF_LIFE_DAYS : 0)) / HALF_LIFE_DAYS);
 
-  const raw = (await spec.load())
-    .filter((p) => p.end >= cutoff && p.end <= today && (!spec.allowed || spec.allowed.test(p.pollster)));
+  const loaded = (await spec.load())
+    .filter((p) => p.end >= cutoff && p.end <= today && (!spec.allowed || spec.allowed.test(p.pollster)))
+    .sort((x, y) => x.end.localeCompare(y.end));
+  // the same institute with the same sample and the same numbers again within a few days is a repeated row, not a new poll: keep the first
+  const raw = loaded.filter((p, i) => !loaded.slice(0, i).some((q) => samePollster(q.pollster, p.pollster) && q.sample === p.sample && q.a === p.a && q.b === p.b && days(q.end, p.end) <= 4));
+  if (raw.length < loaded.length) console.warn(`${spec.uf}: ignored ${loaded.length - raw.length} repeated poll row(s) (same institute, sample and numbers within 4 days)`);
+  if (!raw.length) console.warn(`${spec.uf}: no runoff polls found in the window; if the Wikipedia page was reorganized, check the parser`);
   const polls: RunoffPollRow[] = raw.map((p) => {
     const preElection = p.end <= FIRST_ROUND;
     const twoWay = (100 * p.a) / (p.a + p.b);
@@ -233,7 +240,8 @@ export async function computePresidentRunoff(): Promise<RunoffOdds> {
 
       const find = (w: WikiPoll, key: string) => Object.entries(w.values).find(([n]) => n.includes(key))?.[1] ?? null;
       // round 2 = the runoff tables; pairings against other candidates have a null Lula or Flávio column
-      return wiki.filter((w) => w.sample && tse.some((t) => matchesPoll(t, w))).flatMap((w): RawPoll[] => {
+      // a poll counts once its registration says it has been released (a row ahead of the registered release date is a placeholder or a copy)
+      return wiki.filter((w) => w.sample && tse.some((t) => t.divulgacao <= today() && matchesPoll(t, w))).flatMap((w): RawPoll[] => {
         const a = find(w, 'Lula'), b = find(w, 'Bolsonaro');
         const others = Object.entries(w.values).filter(([n, v]) => !/Lula|Bolsonaro/.test(n) && v !== null);
         return a !== null && b !== null && !others.length ? [{ pollster: w.pollster, end: w.end, sample: w.sample as number, a, b }] : [];
@@ -247,7 +255,7 @@ export async function computePresidentRunoff(): Promise<RunoffOdds> {
 
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 /** a poll column / heading names a finalist when one contains the other ("Allyson" vs "Allyson", "Professora Dorinha") */
-const same = (label: string, name: string) => { const a = plain(label), b = plain(name); return a.includes(b) || b.includes(a); };
+const same = (label: string, name: string) => { const a = plain(label), b = plain(name); return a !== '' && b !== '' && (a.includes(b) || b.includes(a)); };
 
 export async function computeStateRunoff(state: State): Promise<RunoffOdds> {
   const firstRound = await fetchFirstRound(state.uf, 'governor');
@@ -265,7 +273,7 @@ export async function computeStateRunoff(state: State): Promise<RunoffOdds> {
         fetchStatePolls(state.wikiPage, 'governor-runoff', (h3) => same(h3, a.name) && same(h3, b.name)),
         fetchPolls({ scope: state.uf, cargo: /governador/i }),
       ]);
-      return rows.filter((r) => r.sample && tse.some((t) => matchesPoll(t, r))).flatMap((r): RawPoll[] => {
+      return rows.filter((r) => r.sample && tse.some((t) => t.divulgacao <= today() && matchesPoll(t, r))).flatMap((r): RawPoll[] => {
         const get = (name: string) => Object.entries(r.values).find(([n]) => same(n, name))?.[1] ?? null;
         const va = get(a.name), vb = get(b.name);
         return va !== null && vb !== null ? [{ pollster: r.pollster, end: r.end, sample: r.sample as number, a: va, b: vb }] : [];
