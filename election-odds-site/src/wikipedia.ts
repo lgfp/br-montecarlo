@@ -118,7 +118,8 @@ function sameDay(a: string, b: string, toleranceDays: number): boolean {
 
 // Some pollsters register their polls with the TSE under a partner company: Futura's (and Apex's) national polls
 // are filed by "100% Cidades Participações", as the São Paulo table's own "Futura/100% Cidades" label shows.
-const REGISTERED_AS: Record<string, string> = { futura: '100% Cidades', apex: '100% Cidades' };
+// Other entries are spelling variants between Wikipedia and the registry ("DataControl" / "DATA CONTROL", "Quallitá" / "QUALITTA").
+const REGISTERED_AS: Record<string, string> = { futura: '100% Cidades', apex: '100% Cidades', datacontrol: 'Data Control', datacapital: 'Data Capital', quallita: 'Qualitta' };
 
 // Wikipedia has no TSE registration number, so match on pollster + fieldwork end date.
 // Names like "Futura/Apex" or "PoderData/Aya" list co-signers: any one of them may be the registered name.
