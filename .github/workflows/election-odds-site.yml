@@ -1,16 +1,11 @@
 name: Publish election odds site
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'election-odds-site/**'
-      - '.github/workflows/election-odds-site.yml'
-  # rebuild twice a day, at 09:17 and 15:17 UTC (06:17 and 12:17 in Brasília, which has no daylight saving time).
-  # GitHub starts scheduled runs late when it is busy, sometimes by hours; scheduled runs use the default branch
-  schedule:
-    - cron: '17 9 * * *'
-    - cron: '17 15 * * *'
+  # Automatic deployments are OFF (the site was frozen on the eve of the 25 October runoff): no push trigger, no schedule.
+  # To publish a new version, run this workflow by hand (Actions tab -> "Run workflow", or `gh workflow run election-odds-site.yml`).
+  # To turn automation back on, add under `on:`
+  #   push: { branches: [main], paths: ['election-odds-site/**', '.github/workflows/election-odds-site.yml'] }
+  #   schedule: [{ cron: '17 9 * * *' }, { cron: '17 15 * * *' }]    # 09:17 and 15:17 UTC = 06:17 and 12:17 in Brasília
   workflow_dispatch:
 
 permissions:
